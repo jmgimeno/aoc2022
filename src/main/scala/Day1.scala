@@ -11,42 +11,50 @@ object Day1 extends ZIOAppDefault:
   def readFile(name: String): List[String] =
     Source.fromFile("data/day1.txt").getLines.toList
 
-  def chunk(lines: List[String]): List[List[String]] =
+  def split(lines: List[String]): List[List[String]] =
     if lines.isEmpty then List.empty
     else
-      val (group, rest) = lines.span(_.nonEmpty)
-      group :: chunk(rest.drop(1))
+      val (chunk, rest) = lines.span(_.nonEmpty)
+      chunk :: split(rest.drop(1))
 
   def part1(lines: List[String]): Int =
-    chunk(lines).map(g => g.map(_.toInt).sum).max
+    split(lines)
+      .map(chunk => chunk.map(_.toInt).sum)
+      .max
 
   def part2(lines: List[String]): Int =
-    chunk(lines).map(g => g.map(_.toInt).sum).sorted.takeRight(3).sum
+    split(lines)
+      .map(g => g.map(_.toInt).sum)
+      .sorted
+      .takeRight(3)
+      .sum
 
   // with streams
 
-  val sumsStream =
+  val inputStream =
     ZStream
       .fromFileName("data/day1.txt")
       .via(ZPipeline.utf8Decode)
       .via(ZPipeline.splitLines)
-      .split(_.isEmpty)
-      .map(chunk => chunk.map(_.toInt))
-      .map(_.sum)
 
-  val part1Result =
-    sumsStream
+  def sumStream[R, E](lines: ZStream[R, E, String]): ZStream[R, E, Int] =
+    lines
+      .split(_.isEmpty)
+      .map(chunk => chunk.map(_.toInt).sum)
+
+  def part1Workflow[R, E](lines: ZStream[R, E, String]): ZIO[R, E, Int] =
+    sumStream(lines)
       .runFold(0)(_ max _)
 
-  val part2Result =
-    sumsStream
+  def part2Workflow[R, E](lines: ZStream[R, E, String]): ZIO[R, E, Int] =
+    sumStream(lines)
       .runFold[List[Int]](List.empty) { (max3, s) =>
         (s :: max3).sorted.takeRight(3)
       }
       .map(_.sum)
 
   val run =
-    part1Result.debug *> part2Result.debug
+    part1Workflow(inputStream).debug *> part2Workflow(inputStream).debug
 
   // val run = for
   //   lines <- ZIO.attempt(readFile("data/day1.txt"))
