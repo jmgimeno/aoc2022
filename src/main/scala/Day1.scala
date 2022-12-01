@@ -21,7 +21,7 @@ object Day1 extends ZIOAppDefault:
     chunk(lines).map(g => g.map(_.toInt).sum).max
 
   def part2(lines: List[String]): Int =
-    chunk(lines).map(g => g.map(_.toInt).sum).sortBy(n => -n).take(3).sum
+    chunk(lines).map(g => g.map(_.toInt).sum).sorted.takeRight(3).sum
 
   // with streams
 
@@ -41,7 +41,7 @@ object Day1 extends ZIOAppDefault:
   val part2Result =
     sumsStream
       .runFold[List[Int]](List.empty) { (max3, s) =>
-        (s :: max3).sortBy(n => -n).take(3)
+        (s :: max3).sorted.takeRight(3)
       }
       .map(_.sum)
 
