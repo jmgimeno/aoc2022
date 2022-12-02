@@ -9,7 +9,7 @@ object Day1 extends ZIOAppDefault:
   // with files
 
   def readFile(name: String): List[String] =
-    Source.fromFile("data/day1.txt").getLines.toList
+    Source.fromFile("data/input1.txt").getLines.toList
 
   def split(lines: List[String]): List[List[String]] =
     if lines.isEmpty then List.empty
@@ -33,7 +33,7 @@ object Day1 extends ZIOAppDefault:
 
   val inputStream =
     ZStream
-      .fromFileName("data/day1.txt")
+      .fromFileName("data/input1.txt")
       .via(ZPipeline.utf8Decode)
       .via(ZPipeline.splitLines)
 
