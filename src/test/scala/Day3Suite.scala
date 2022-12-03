@@ -7,7 +7,7 @@ import Day3.*
 object Day3Suite extends ZIOSpecDefault:
 
   def spec =
-    suite("part1")(
+    suite("day3")(
       test("priorities") {
         assertTrue(priority("vJrwpWtwJgWrhcsFMMfFFhFp") == 16)
         assertTrue(priority("jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL") == 38)
