@@ -4,28 +4,29 @@ import zio.stream.*
 object Day5 extends ZIOAppDefault:
 
   type Stack = String
-  type Level = Seq[(Char, Int)]
+  type Crate = Char
+  type Level = Seq[(Crate, Int)]
 
   final case class Stacks private (stacks: IndexedSeq[Stack]):
 
-    def runOneByOne(moves: Chunk[Move]): Stacks =
+    def movingSingle(moves: Chunk[Move]): Stacks =
       Stacks {
         moves.foldLeft(stacks) { case (stacks, Move(n, from, to)) =>
           (1 to n).foldLeft(stacks) { (stacks, _) =>
-            val top = stacks(from - 1).last
+            val crate = stacks(from - 1).last
             val newFrom = stacks(from - 1).dropRight(1)
-            val newTo = stacks(to - 1).appended(top)
+            val newTo = stacks(to - 1).appended(crate)
             stacks.updated(from - 1, newFrom).updated(to - 1, newTo)
           }
         }
       }
 
-    def runByGroup(moves: Chunk[Move]): Stacks =
+    def movingGroup(moves: Chunk[Move]): Stacks =
       Stacks {
         moves.foldLeft(stacks) { case (stacks, Move(n, from, to)) =>
-          val top = stacks(from - 1).takeRight(n)
+          val crates = stacks(from - 1).takeRight(n)
           val newFrom = stacks(from - 1).dropRight(n)
-          val newTo = stacks(to - 1) ++ top
+          val newTo = stacks(to - 1) ++ crates
           stacks.updated(from - 1, newFrom).updated(to - 1, newTo)
         }
       }
@@ -40,22 +41,25 @@ object Day5 extends ZIOAppDefault:
       val stacks = IndexedSeq.fill(numStacks)("")
       Stacks {
         levels.foldLeft(stacks) { (stacks, level) =>
-          level.foldLeft(stacks) { case (stacks, (c, s)) =>
-            val old = stacks(s - 1)
-            stacks.updated(s - 1, old.prepended(c))
+          level.foldLeft(stacks) { case (stacks, (crate, stack)) =>
+            val old = stacks(stack - 1)
+            stacks.updated(stack - 1, old.prepended(crate))
           }
         }
       }
 
   final case class Move(n: Int, from: Int, to: Int)
 
+  def parseNumStacks(line: String): Int =
+    raw"(\d)+".r.findAllMatchIn(line).toSeq.last.group(1).toInt
+
   def parseStackLevel(numStacks: Int)(line: String): Level =
-    val positions = (0 until numStacks).map(i => i * 4 + 1)
-    val crates = positions.map(line.charAt(_))
+    val positions = (0 until numStacks).map(_ * 4 + 1)
+    val crates = positions.map(line.charAt)
     crates.zipWithIndex.filter(_._1 != ' ').map((c, i) => (c, i + 1))
 
   def parseStacks(lines: Chunk[String], numStacks: Int): Stacks =
-    val levels = lines.dropRight(1).map(parseStackLevel(numStacks))
+    val levels = lines.map(parseStackLevel(numStacks))
     Stacks(numStacks, levels)
 
   def parseMoves(lines: Chunk[String]): Chunk[Move] =
@@ -71,24 +75,25 @@ object Day5 extends ZIOAppDefault:
       .via(ZPipeline.utf8Decode)
       .via(ZPipeline.splitLines)
 
-  def part1[R, E](
+  def part[R, E](
       is: ZStream[R, E, String],
-      numStacks: Int = 9
+      movement: (Stacks, Chunk[Move]) => Stacks
   ): ZIO[R, E, String] =
     for
       parts <- is.split(_.isEmpty()).runCollect
-      stacks = parseStacks(parts(0), numStacks)
+      numStacks = parseNumStacks(parts(0).last)
+      stacks = parseStacks(parts(0).dropRight(1), numStacks)
       moves = parseMoves(parts(1))
-    yield stacks.runOneByOne(moves).tops
+    yield movement(stacks, moves).tops
+
+  def part1[R, E](
+      is: ZStream[R, E, String]
+  ): ZIO[R, E, String] =
+    part(is, _ movingSingle _)
 
   def part2[R, E](
-      is: ZStream[R, E, String],
-      numStacks: Int = 9
+      is: ZStream[R, E, String]
   ): ZIO[R, E, String] =
-    for
-      parts <- is.split(_.isEmpty()).runCollect
-      stacks = parseStacks(parts(0), numStacks)
-      moves = parseMoves(parts(1))
-    yield stacks.runByGroup(moves).tops
+    part(is, _ movingGroup _)
 
-  lazy val run = part1(inputStream, 9).debug *> part2(inputStream, 9).debug
+  lazy val run = part1(inputStream).debug *> part2(inputStream).debug

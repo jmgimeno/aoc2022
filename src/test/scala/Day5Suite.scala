@@ -25,18 +25,18 @@ object Day5Suite extends ZIOSpecDefault:
     suite("day5")(
       suite("part1")(
         test("example") {
-          assertZIO(part1(exampleStream, 3))(equalTo("CMZ"))
+          assertZIO(part1(exampleStream))(equalTo("CMZ"))
         },
         test("input.txt") {
-          assertZIO(part1(inputStream, 9))(equalTo("JDTMRWCQJ"))
+          assertZIO(part1(inputStream))(equalTo("JDTMRWCQJ"))
         }
       ),
       suite("part2")(
         test("example") {
-          assertZIO(part2(exampleStream, 3))(equalTo("MCD"))
+          assertZIO(part2(exampleStream))(equalTo("MCD"))
         },
         test("input.txt") {
-          assertZIO(part2(inputStream, 9))(equalTo("VHJDDCWRD"))
+          assertZIO(part2(inputStream))(equalTo("VHJDDCWRD"))
         }
       )
     )
