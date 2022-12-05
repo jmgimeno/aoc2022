@@ -26,7 +26,7 @@ object Day3 extends ZIOAppDefault:
       .via(ZPipeline.utf8Decode)
       .via(ZPipeline.splitLines)
       .map(priority)
-      .runFold(0)(_ + _)
+      .runSum
 
   val part2 =
     ZStream
@@ -35,6 +35,6 @@ object Day3 extends ZIOAppDefault:
       .via(ZPipeline.splitLines)
       .grouped(3)
       .map(priority)
-      .runFold(0)(_ + _)
+      .runSum
 
   val run = part1.debug *> part2.debug

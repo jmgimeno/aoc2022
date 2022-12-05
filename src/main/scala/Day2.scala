@@ -55,7 +55,7 @@ object Day2 extends ZIOAppDefault:
     inputStream
       .map(Part1Round.parse)
       .map(_.score)
-      .runFold(0)(_ + _)
+      .runSum
 
   val parseOutcome =
     Map("X" -> Loss, "Y" -> Draw, "Z" -> Win)
@@ -76,6 +76,6 @@ object Day2 extends ZIOAppDefault:
     inputStream
       .map(Part2Round.parse)
       .map(_.score)
-      .runFold(0)(_ + _)
+      .runSum
 
   val run = part1(inputStream).debug *> part2(inputStream).debug

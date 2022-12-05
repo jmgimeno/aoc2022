@@ -8,7 +8,7 @@ object Day5 extends ZIOAppDefault:
 
   final case class Stacks private (stacks: IndexedSeq[Stack]):
 
-    def execute(moves: Chunk[Move]): Stacks =
+    def runOneByOne(moves: Chunk[Move]): Stacks =
       Stacks {
         moves.foldLeft(stacks) { case (stacks, Move(n, from, to)) =>
           (1 to n).foldLeft(stacks) { (stacks, _) =>
@@ -20,7 +20,7 @@ object Day5 extends ZIOAppDefault:
         }
       }
 
-    def execute2(moves: Chunk[Move]): Stacks =
+    def runByGroup(moves: Chunk[Move]): Stacks =
       Stacks {
         moves.foldLeft(stacks) { case (stacks, Move(n, from, to)) =>
           val top = stacks(from - 1).takeRight(n)
@@ -79,7 +79,7 @@ object Day5 extends ZIOAppDefault:
       parts <- is.split(_.isEmpty()).runCollect
       stacks = parseStacks(parts(0), numStacks)
       moves = parseMoves(parts(1))
-    yield stacks.execute(moves).tops
+    yield stacks.runOneByOne(moves).tops
 
   def part2[R, E](
       is: ZStream[R, E, String],
@@ -89,6 +89,6 @@ object Day5 extends ZIOAppDefault:
       parts <- is.split(_.isEmpty()).runCollect
       stacks = parseStacks(parts(0), numStacks)
       moves = parseMoves(parts(1))
-    yield stacks.execute2(moves).tops
+    yield stacks.runByGroup(moves).tops
 
   lazy val run = part1(inputStream, 9).debug *> part2(inputStream, 9).debug
