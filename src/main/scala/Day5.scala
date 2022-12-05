@@ -9,14 +9,19 @@ object Day5 extends ZIOAppDefault:
 
   final case class Stacks private (stacks: IndexedSeq[Stack]):
 
+    private def moving(
+        stacks: IndexedSeq[Stack]
+    )(size: Int, from: Int, to: Int): IndexedSeq[Stack] =
+      val crate = stacks(from - 1).takeRight(size)
+      val newFrom = stacks(from - 1).dropRight(size)
+      val newTo = stacks(to - 1) ++ crate
+      stacks.updated(from - 1, newFrom).updated(to - 1, newTo)
+
     def movingSingle(moves: Chunk[Move]): Stacks =
       Stacks {
         moves.foldLeft(stacks) { case (stacks, Move(n, from, to)) =>
           (1 to n).foldLeft(stacks) { (stacks, _) =>
-            val crate = stacks(from - 1).last
-            val newFrom = stacks(from - 1).dropRight(1)
-            val newTo = stacks(to - 1).appended(crate)
-            stacks.updated(from - 1, newFrom).updated(to - 1, newTo)
+            moving(stacks)(1, from, to)
           }
         }
       }
@@ -24,17 +29,12 @@ object Day5 extends ZIOAppDefault:
     def movingGroup(moves: Chunk[Move]): Stacks =
       Stacks {
         moves.foldLeft(stacks) { case (stacks, Move(n, from, to)) =>
-          val crates = stacks(from - 1).takeRight(n)
-          val newFrom = stacks(from - 1).dropRight(n)
-          val newTo = stacks(to - 1) ++ crates
-          stacks.updated(from - 1, newFrom).updated(to - 1, newTo)
+          moving(stacks)(n, from, to)
         }
       }
 
     def tops: String =
       stacks.map(_.last).mkString
-
-  end Stacks
 
   object Stacks:
     def apply(numStacks: Int, levels: Chunk[Level]): Stacks =
@@ -72,8 +72,7 @@ object Day5 extends ZIOAppDefault:
   val inputStream =
     ZStream
       .fromFileName("data/input5.txt")
-      .via(ZPipeline.utf8Decode)
-      .via(ZPipeline.splitLines)
+      .via(ZPipeline.utf8Decode >>> ZPipeline.splitLines)
 
   def part[R, E](
       is: ZStream[R, E, String],
