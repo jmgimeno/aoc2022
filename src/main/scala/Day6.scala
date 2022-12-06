@@ -24,7 +24,6 @@ object Day6 extends ZIOAppDefault:
       .map(_.head)
 
   val part1 = part(4)
-
-  def part2 = part(14)
+  val part2 = part(14)
 
   lazy val run = part1(inputStream).debug *> part2(inputStream).debug
