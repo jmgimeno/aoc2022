@@ -17,8 +17,7 @@ object Day6 extends ZIOAppDefault:
       .sliding(size, 1)
       .zip[R, E, Int](ZStream.iterate(size)(_ + 1))
       .find { (chunk, _) =>
-        val str = chunk.mkString
-        str.distinct == str
+        chunk.distinct == chunk
       }
       .map(_._2)
       .runCollect
