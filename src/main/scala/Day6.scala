@@ -15,7 +15,7 @@ object Day6 extends ZIOAppDefault:
   ): ZIO[R, E, Int] =
     is
       .sliding(size, 1)
-      .zip[R, E, Int](ZStream.iterate(size)(_ + 1))
+      .zip(ZStream.iterate(size)(_ + 1))
       .find(_._1.distinct.size == size)
       .map(_._2)
       .runCollect
