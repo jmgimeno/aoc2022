@@ -2,6 +2,7 @@ import zio.*
 import zio.stream.*
 
 import scala.collection.mutable
+import java.io.File
 
 object Day7 extends ZIOAppDefault:
 
@@ -43,7 +44,7 @@ object Day7 extends ZIOAppDefault:
       case s"dir $dname"    => Directory(dname)
       case s"$fsize $fname" => File(fname, fsize.toInt)
 
-  class FileSystem:
+  class FileSystem private ():
     val root: Entry.Directory = Entry.mkdir("/")
     val currentPath: mutable.ListBuffer[Entry.Directory] =
       mutable.ListBuffer.empty
@@ -78,6 +79,9 @@ object Day7 extends ZIOAppDefault:
         .filter(_.size + unusedSpace >= neededSpace)
         .head
 
+  object FileSystem:
+    def make: UIO[FileSystem] = ZIO.succeed(new FileSystem())
+
   def execute(fs: FileSystem)(line: Line): UIO[Unit] =
     line match
       case Line.Cd(dname) => fs.cd(dname)
@@ -97,7 +101,7 @@ object Day7 extends ZIOAppDefault:
       result: FileSystem => Int
   ): ZIO[R, E, Int] =
     for
-      fs <- ZIO.succeed(new FileSystem)
+      fs <- FileSystem.make
       _ <- is
         .map(Line.parse)
         .mapZIO(execute(fs))
