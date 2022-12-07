@@ -9,21 +9,26 @@ object Day7 extends ZIOAppDefault:
   val neededSpace = 30000000
 
   enum Entry:
-    case Directory(name: String, entries: mutable.ListBuffer[Entry])
+    case Directory(
+        name: String,
+        subdirs: mutable.ListBuffer[Directory],
+        files: mutable.ListBuffer[File]
+    )
     case File(name: String, fsize: Int)
 
     def name: String
     def size: Int = this match
-      case Directory(_, entries) => entries.map(_.size).sum
-      case File(_, fsize)        => fsize
-    def findDirectories: List[Directory] = this match
-      case dir @ Directory(_, entries) =>
-        dir :: entries.toList.flatMap(_.findDirectories)
-      case File(_, _) => List.empty
+      case Directory(_, subdirs, files) =>
+        subdirs.map(_.size).sum + files.map(_.size).sum
+      case File(_, fsize) => fsize
 
   object Entry:
     def mkdir(name: String): Directory =
-      Directory(name, mutable.ListBuffer.empty)
+      Directory(name, mutable.ListBuffer.empty, mutable.ListBuffer.empty)
+
+  extension (dir: Entry.Directory)
+    def findDirectories: List[Entry.Directory] =
+      dir :: dir.subdirs.toList.flatMap(_.findDirectories)
 
   enum Line:
     case Cd(dname: String)
@@ -39,7 +44,7 @@ object Day7 extends ZIOAppDefault:
       case s"$fsize $fname" => File(fname, fsize.toInt)
 
   class FileSystem:
-    val root: Entry.Directory = Entry.Directory("/", mutable.ListBuffer.empty)
+    val root: Entry.Directory = Entry.mkdir("/")
     val currentPath: mutable.ListBuffer[Entry.Directory] =
       mutable.ListBuffer.empty
 
@@ -50,16 +55,17 @@ object Day7 extends ZIOAppDefault:
           case ".." => currentPath.dropRightInPlace(1)
           case x =>
             val targetDir =
-              currentPath.last.entries
+              currentPath.last.subdirs
                 .find(_.name == target)
                 .getOrElse(root)
-                .asInstanceOf[Entry.Directory] // Ugly !!
             currentPath += targetDir
       }
 
-    def ls(entry: Entry): UIO[Unit] =
+    def addToCurrentDirectory(newEntry: Entry): UIO[Unit] =
       ZIO.succeed {
-        currentPath.last.entries += entry
+        newEntry match
+          case d @ Entry.Directory(_, _, _) => currentPath.last.subdirs += d
+          case f @ Entry.File(_, _)         => currentPath.last.files += f
       }
 
     def findDirectories(upperSize: Int): List[Entry.Directory] =
@@ -77,8 +83,9 @@ object Day7 extends ZIOAppDefault:
       case Line.Cd(dname) => fs.cd(dname)
       case Line.Ls        => ZIO.unit
       case Line.Directory(dname) =>
-        fs.ls(Entry.mkdir(dname))
-      case Line.File(fname, fsize) => fs.ls(Entry.File(fname, fsize))
+        fs.addToCurrentDirectory(Entry.mkdir(dname))
+      case Line.File(fname, fsize) =>
+        fs.addToCurrentDirectory(Entry.File(fname, fsize))
 
   val inputStream =
     ZStream
