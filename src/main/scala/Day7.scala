@@ -9,25 +9,21 @@ object Day7 extends ZIOAppDefault:
   val neededSpace = 30000000
 
   enum Entry:
-    case Directory(dname: String, entries: mutable.ListBuffer[Entry])
-    case File(fname: String, fsize: Int)
+    case Directory(name: String, entries: mutable.ListBuffer[Entry])
+    case File(name: String, fsize: Int)
 
-    def name: String = this match
-      case Directory(dname, entries) => dname
-      case File(fname, fsize)        => fname
-
+    def name: String
     def size: Int = this match
       case Directory(_, entries) => entries.map(_.size).sum
       case File(_, fsize)        => fsize
-
-    def isDirectory = this match
-      case Directory(_, _) => true
-      case File(_, _)      => false
-
     def findDirectories: List[Directory] = this match
       case dir @ Directory(_, entries) =>
         dir :: entries.toList.flatMap(_.findDirectories)
-      case _ => List.empty
+      case File(_, _) => List.empty
+
+  object Entry:
+    def mkdir(name: String): Directory =
+      Directory(name, mutable.ListBuffer.empty)
 
   enum Line:
     case Cd(dname: String)
@@ -57,7 +53,7 @@ object Day7 extends ZIOAppDefault:
               currentPath.last.entries
                 .find(_.name == target)
                 .getOrElse(root)
-                .asInstanceOf[Entry.Directory]
+                .asInstanceOf[Entry.Directory] // Ugly !!
             currentPath += targetDir
       }
 
@@ -81,7 +77,7 @@ object Day7 extends ZIOAppDefault:
       case Line.Cd(dname) => fs.cd(dname)
       case Line.Ls        => ZIO.unit
       case Line.Directory(dname) =>
-        fs.ls(Entry.Directory(dname, mutable.ListBuffer.empty))
+        fs.ls(Entry.mkdir(dname))
       case Line.File(fname, fsize) => fs.ls(Entry.File(fname, fsize))
 
   val inputStream =
@@ -95,7 +91,7 @@ object Day7 extends ZIOAppDefault:
   ): ZIO[R, E, Int] =
     for
       fs <- ZIO.succeed(new FileSystem)
-      r <- is
+      _ <- is
         .map(Line.parse)
         .mapZIO(execute(fs))
         .runDrain
