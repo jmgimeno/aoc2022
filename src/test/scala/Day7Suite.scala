@@ -36,7 +36,7 @@ object Day7Suite extends ZIOSpecDefault:
     ZStream.fromIterable(example.split("\n"))
 
   lazy val spec =
-    suite("day6")(
+    suite("day7")(
       suite("part1")(
         test("example") {
           assertZIO(part1(exampleStream))(equalTo(95437))

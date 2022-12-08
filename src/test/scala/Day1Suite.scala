@@ -28,16 +28,20 @@ object Day1Suite extends ZIOSpecDefault:
     ZStream.fromIterable(input)
 
   val spec = suite("day1")(
-    test("part1") {
-      assertTrue(part1(input) == 24000)
-    },
-    test("part2") {
-      assertTrue(part2(input) == 45000)
-    },
-    test("part1 stream") {
-      assertZIO(part1Workflow(inputStream))(equalTo(24000))
-    },
-    test("part2 stream") {
-      assertZIO(part2Workflow(inputStream))(equalTo(45000))
-    }
+    suite("part1")(
+      test("example") {
+        assertTrue(part1(input) == 24000)
+      },
+      test("input.txt") {
+        assertZIO(part1Workflow(inputStream))(equalTo(24000))
+      }
+    ),
+    suite("part2")(
+      test("example") {
+        assertTrue(part2(input) == 45000)
+      },
+      test("input.txt") {
+        assertZIO(part2Workflow(inputStream))(equalTo(45000))
+      }
+    )
   )

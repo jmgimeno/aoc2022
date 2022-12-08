@@ -17,10 +17,14 @@ object Day2Suite extends ZIOSpecDefault:
 
   val spec =
     suite("day2")(
-      test("part1") {
-        assertZIO(part1(inputStream))(equalTo(15))
-      },
-      test("part2") {
-        assertZIO(part2(inputStream))(equalTo(12))
-      }
+      suite("part1")(
+        test("input.txt") {
+          assertZIO(part1(inputStream))(equalTo(15))
+        }
+      ),
+      suite("part2")(
+        test("input.txt") {
+          assertZIO(part2(inputStream))(equalTo(12))
+        }
+      )
     )
