@@ -34,23 +34,14 @@ object Day8 extends ZIOAppDefault:
       Direction.values.exists(isVisible(x, y))
 
     def isVisible(x: Int, y: Int)(d: Direction): Boolean =
+      lineOfSight(x, y)(d).forall(_ < trees(y)(x))
+
+    def lineOfSight(x: Int, y: Int)(d: Direction): IndexedSeq[Int] =
       d match
-        case Direction.UP    => isVisibleUp(x, y)
-        case Direction.LEFT  => isVisibleLeft(x, y)
-        case Direction.DOWN  => isVisibleDown(x, y)
-        case Direction.RIGHT => isVisibleRight(x, y)
-
-    def isVisibleUp(x: Int, y: Int): Boolean =
-      (0 until y).forall(u => trees(u)(x) < trees(y)(x))
-
-    def isVisibleLeft(x: Int, y: Int): Boolean =
-      (0 until x).forall(l => trees(y)(l) < trees(y)(x))
-
-    def isVisibleDown(x: Int, y: Int): Boolean =
-      (y + 1 until height).forall(d => trees(d)(x) < trees(y)(x))
-
-    def isVisibleRight(x: Int, y: Int): Boolean =
-      (x + 1 until width).forall(r => trees(y)(r) < trees(y)(x))
+        case Direction.UP    => (y - 1 to 0 by -1).map(trees(_)(x))
+        case Direction.LEFT  => (x - 1 to 0 by -1).map(trees(y)(_))
+        case Direction.DOWN  => (y + 1 until height).map(trees(_)(x))
+        case Direction.RIGHT => (x + 1 until width).map(trees(y)(_))
 
     def highestScenicScore: Int =
       val scenicScores =
@@ -61,28 +52,14 @@ object Day8 extends ZIOAppDefault:
       scenicScores.max
 
     def scenicScore(x: Int, y: Int): Int =
-      Direction.values.map(scenicScore(x, y)).foldLeft(1)(_ * _)
+      Direction.values
+        .map(viewingDistance(x, y))
+        .foldLeft(1)(_ * _)
 
-    def scenicScore(x: Int, y: Int)(d: Direction): Int =
-      d match
-        case Direction.UP    => scenicScoreUp(x, y)
-        case Direction.LEFT  => scenicScoreLeft(x, y)
-        case Direction.DOWN  => scenicScoreDown(x, y)
-        case Direction.RIGHT => scenicScoreRight(x, y)
+    def viewingDistance(x: Int, y: Int)(d: Direction): Int =
+      viewingDistance(lineOfSight(x, y)(d), trees(y)(x))
 
-    def scenicScoreUp(x: Int, y: Int): Int =
-      scenicScore((y - 1 to 0 by -1).map(trees(_)(x)), trees(y)(x))
-
-    def scenicScoreLeft(x: Int, y: Int): Int =
-      scenicScore((x - 1 to 0 by -1).map(trees(y)(_)), trees(y)(x))
-
-    def scenicScoreDown(x: Int, y: Int): Int =
-      scenicScore((y + 1 until height).map(trees(_)(x)), trees(y)(x))
-
-    def scenicScoreRight(x: Int, y: Int): Int =
-      scenicScore((x + 1 until width).map(trees(y)(_)), trees(y)(x))
-
-    def scenicScore(lineOfSight: IndexedSeq[Int], tree: Int): Int =
+    def viewingDistance(lineOfSight: IndexedSeq[Int], tree: Int): Int =
       val pos = lineOfSight.indexWhere(_ >= tree)
       if pos == -1 then lineOfSight.length else pos + 1
 
