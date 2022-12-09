@@ -28,7 +28,7 @@ object Day9Suite extends ZIOSpecDefault:
           assertZIO(part1(exampleStream))(equalTo(13))
         },
         test("input.txt") {
-          assertTrue(true)
+          assertZIO(part1(inputStream))(equalTo(5710))
         }
       ),
       suite("part2")(
