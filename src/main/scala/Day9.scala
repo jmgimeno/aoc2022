@@ -51,8 +51,6 @@ object Day9 extends ZIOAppDefault:
       val dy = if y < towards.y then +1 else -1
       Position(x + dx, y + dy)
 
-    override def toString = s"($x, $y)"
-
   case class Rope private (
       knots: List[Position],
       visited: Set[Position]
@@ -73,9 +71,6 @@ object Day9 extends ZIOAppDefault:
         .foldLeft(List((knots.head, newHead))) { (initKnots, oldTail) =>
           val (oldHead, newHead) = initKnots.head
           val newTail = moveTail(oldTail, oldHead, newHead)
-          // println(
-          //   s"oldHead $oldHead; newHead $newHead; oldTail $oldTail -> newTail $newTail"
-          // )
           (oldTail, newTail) :: initKnots
         }
         .map(_._2)
@@ -83,23 +78,16 @@ object Day9 extends ZIOAppDefault:
       Rope(newKnots, visited + newKnots.last)
 
     def up: Rope =
-      // println("UP")
       move(knots.head.up)
 
     def right: Rope =
-      // println("RIGHT")
       move(knots.head.right)
 
     def down: Rope =
-      // println("DOWN")
       move(knots.head.down)
 
     def left: Rope =
-      // println("LEFT")
-      val l = move(knots.head.left)
-      // println(l)
-      // println("-------------------------------------------------------")
-      l
+      move(knots.head.left)
 
   object Rope:
     def make(n: Int = 1): Rope = Rope(
@@ -121,26 +109,16 @@ object Day9 extends ZIOAppDefault:
       .fromFileName("data/input9.txt")
       .via(ZPipeline.utf8Decode >>> ZPipeline.splitLines)
 
-  def part1[R, E](
+  def part[R, E](numKnots: Int)(
       is: ZStream[R, E, String]
   ): ZIO[R, E, Int] =
     for rope <- is
         .map(Motion.parse)
-        .runFold(Rope.make(2))(Rope.doMotion)
+        .runFold(Rope.make(numKnots))(Rope.doMotion)
     yield rope.visited.size
 
-  def part2[R, E](
-      is: ZStream[R, E, String]
-  ): ZIO[R, E, Int] =
-    for rope <- is
-        .map(Motion.parse)
-        .runFold(Rope.make(10))((r, m) =>
-          // println(s"Rope: $r")
-          // println(s"Motion: $m")
-          Rope.doMotion(r, m)
-        )
-      // _ <- Console.printLine(rope).orDie
-    yield rope.visited.size
+  val part1 = part(2)
+  val part2 = part(10)
 
   val run =
     part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")
