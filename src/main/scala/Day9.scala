@@ -36,10 +36,7 @@ object Day9 extends ZIOAppDefault:
       else distance(other) == 2
 
     def twoStepsSameAxis(other: Position): Boolean =
-      val steps = distance(other)
-      val vertical = x == other.x
-      val horizontal = y == other.y
-      (vertical || horizontal) && steps == 2
+      (x == other.x || y == other.y) && distance(other) == 2
 
     def sameMovement(current: Position, next: Position): Position =
       if x == next.x
