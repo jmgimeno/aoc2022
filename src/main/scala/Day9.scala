@@ -20,12 +20,6 @@ object Day9 extends ZIOAppDefault:
       case s"D $steps" => Down(steps.toInt)
       case s"L $steps" => Left(steps.toInt)
 
-  enum Diagonal(val dx: Int, val dy: Int):
-    case RightDown extends Diagonal(1, 1)
-    case RightUp extends Diagonal(1, -1)
-    case LeftDown extends Diagonal(-1, 1)
-    case LeftUp extends Diagonal(-1, -1)
-
   case class Position(x: Int, y: Int):
     def up = Position(x, y - 1)
     def right = Position(x + 1, y)
@@ -44,63 +38,49 @@ object Day9 extends ZIOAppDefault:
       val rl = y == other.y
       steps == 2 && (ud || rl)
 
-    def diagonal(diagonal: Diagonal): Position =
-      Position(x + diagonal.dx, y + diagonal.dy)
+    def sameMovement(current: Position, next: Position): Position =
+      Position(x + next.x - current.x, y + next.y - current.y)
+
+    def moveDiagonal(current: Position, next: Position): Position =
+      val dx = if x < next.x then +1 else -1
+      val dy = if y < next.y then +1 else -1
+      Position(x + dx, y + dy)
 
   case class Rope private (
-      head: Position,
-      tail: Position,
+      knots: List[Position],
       visited: Set[Position]
   ):
-    val sameRow = head.y == tail.y
-    val sameCol = head.x == tail.x
-    val covered = head == tail
-    val diagonal = !sameCol || !sameRow
+
+    def moveTail(newHead: Position): Position =
+      if newHead.twoStepsURDL(knots.tail.head) then
+        knots.tail.head.sameMovement(knots.head, newHead)
+      else if !newHead.touching(knots.tail.head) then
+        knots.tail.head.moveDiagonal(knots.head, newHead)
+      else knots.tail.head
 
     def up: Rope =
-      val newHead = head.up
-      val newTail =
-        if newHead.twoStepsURDL(tail) then tail.up
-        else if !newHead.touching(tail) then
-          if tail.x < head.x then tail.diagonal(Diagonal.RightUp)
-          else tail.diagonal(Diagonal.LeftUp)
-        else tail
-      Rope(newHead, newTail, visited + newTail)
+      val newHead = knots.head.up
+      val newTail = moveTail(newHead)
+      Rope(List(newHead, newTail), visited + newTail)
 
     def right: Rope =
-      val newHead = head.right
-      val newTail =
-        if newHead.twoStepsURDL(tail) then tail.right
-        else if !newHead.touching(tail) then
-          if tail.y < head.y then tail.diagonal(Diagonal.RightDown)
-          else tail.diagonal(Diagonal.RightUp)
-        else tail
-      Rope(newHead, newTail, visited + newTail)
+      val newHead = knots.head.right
+      val newTail = moveTail(newHead)
+      Rope(List(newHead, newTail), visited + newTail)
 
     def down: Rope =
-      val newHead = head.down
-      val newTail =
-        if newHead.twoStepsURDL(tail) then tail.down
-        else if !newHead.touching(tail) then
-          if tail.x < head.x then tail.diagonal(Diagonal.RightDown)
-          else tail.diagonal(Diagonal.LeftDown)
-        else tail
-      Rope(newHead, newTail, visited + newTail)
+      val newHead = knots.head.down
+      val newTail = moveTail(newHead)
+      Rope(List(newHead, newTail), visited + newTail)
 
     def left: Rope =
-      val newHead = head.left
-      val newTail =
-        if newHead.twoStepsURDL(tail) then tail.left
-        else if !newHead.touching(tail) then
-          if tail.y < head.y then tail.diagonal(Diagonal.LeftDown)
-          else tail.diagonal(Diagonal.LeftUp)
-        else tail
-      Rope(newHead, newTail, visited + newTail)
+      val newHead = knots.head.left
+      val newTail = moveTail(newHead)
+      Rope(List(newHead, newTail), visited + newTail)
 
   object Rope:
     def make: Rope = Rope(
-      head = Position(0, 0),
-      tail = Position(0, 0),
+      knots = List(Position(0, 0), Position(0, 0)),
       visited = Set(Position(0, 0))
     )
 
@@ -126,9 +106,9 @@ object Day9 extends ZIOAppDefault:
         .runFold(Rope.make)(Rope.doMotion)
     yield rope.visited.size
 
-  // def part2[R, E](
-  //     is: ZStream[R, E, String]
-  // ): ZIO[R, E, Int] =
-  //   ???
+  def part2[R, E](
+      is: ZStream[R, E, String]
+  ): ZIO[R, E, Int] =
+    ???
 
   val run = part1(inputStream).debug("PART1")
