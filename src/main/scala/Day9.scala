@@ -51,36 +51,38 @@ object Day9 extends ZIOAppDefault:
       visited: Set[Position]
   ):
 
-    def moveTail(newHead: Position): Position =
-      if newHead.twoStepsURDL(knots.tail.head) then
-        knots.tail.head.sameMovement(knots.head, newHead)
-      else if !newHead.touching(knots.tail.head) then
-        knots.tail.head.moveDiagonal(knots.head, newHead)
-      else knots.tail.head
+    def moveTail(
+        oldTail: Position,
+        oldHead: Position,
+        newHead: Position
+    ): Position =
+      if newHead.twoStepsURDL(oldTail) then
+        oldTail.sameMovement(oldHead, newHead)
+      else if !newHead.touching(oldTail) then
+        oldTail.moveDiagonal(oldHead, newHead)
+      else oldTail
 
-    def up: Rope =
-      val newHead = knots.head.up
-      val newTail = moveTail(newHead)
-      Rope(List(newHead, newTail), visited + newTail)
+    def move(newHead: Position): Rope =
+      val newKnots = knots.tail
+        .foldLeft(List((knots.head, newHead))) { (initKnots, oldTail) =>
+          val (oldHead, newHead) = initKnots.last
+          val newTail = moveTail(oldTail, oldHead, newHead)
+          initKnots :+ (oldTail, newTail)
+        }
+        .map(_._2)
+      Rope(newKnots, visited + newKnots.last)
 
-    def right: Rope =
-      val newHead = knots.head.right
-      val newTail = moveTail(newHead)
-      Rope(List(newHead, newTail), visited + newTail)
+    def up: Rope = move(knots.head.up)
 
-    def down: Rope =
-      val newHead = knots.head.down
-      val newTail = moveTail(newHead)
-      Rope(List(newHead, newTail), visited + newTail)
+    def right: Rope = move(knots.head.right)
 
-    def left: Rope =
-      val newHead = knots.head.left
-      val newTail = moveTail(newHead)
-      Rope(List(newHead, newTail), visited + newTail)
+    def down: Rope = move(knots.head.down)
+
+    def left: Rope = move(knots.head.left)
 
   object Rope:
-    def make: Rope = Rope(
-      knots = List(Position(0, 0), Position(0, 0)),
+    def make(n: Int = 1): Rope = Rope(
+      knots = List.fill(n)(Position(0, 0)),
       visited = Set(Position(0, 0))
     )
 
@@ -103,7 +105,7 @@ object Day9 extends ZIOAppDefault:
   ): ZIO[R, E, Int] =
     for rope <- is
         .map(Motion.parse)
-        .runFold(Rope.make)(Rope.doMotion)
+        .runFold(Rope.make(2))(Rope.doMotion)
     yield rope.visited.size
 
   def part2[R, E](
