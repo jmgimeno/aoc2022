@@ -32,18 +32,18 @@ object Day9 extends ZIOAppDefault:
       else if y == other.y then math.abs(x - other.x) == 1
       else math.abs(x - other.x) + math.abs(y - other.y) == 2
 
-    def twoStepsURDL(other: Position): Boolean =
+    def twoStepsSameAxis(other: Position): Boolean =
       val steps = math.abs(x - other.x) + math.abs(y - other.y)
-      val ud = x == other.x
-      val rl = y == other.y
-      steps == 2 && (ud || rl)
+      val vertical = x == other.x
+      val horizontal = y == other.y
+      (vertical || horizontal) && steps == 2
 
     def sameMovement(current: Position, next: Position): Position =
       Position(x + next.x - current.x, y + next.y - current.y)
 
-    def moveDiagonal(current: Position, next: Position): Position =
-      val dx = if x < next.x then +1 else -1
-      val dy = if y < next.y then +1 else -1
+    def moveDiagonal(towards: Position): Position =
+      val dx = if x < towards.x then +1 else -1
+      val dy = if y < towards.y then +1 else -1
       Position(x + dx, y + dy)
 
   case class Rope private (
@@ -51,18 +51,17 @@ object Day9 extends ZIOAppDefault:
       visited: Set[Position]
   ):
 
-    def moveTail(
+    private def moveTail(
         oldTail: Position,
         oldHead: Position,
         newHead: Position
     ): Position =
-      if newHead.twoStepsURDL(oldTail) then
+      if newHead.twoStepsSameAxis(oldTail) then
         oldTail.sameMovement(oldHead, newHead)
-      else if !newHead.touching(oldTail) then
-        oldTail.moveDiagonal(oldHead, newHead)
+      else if !newHead.touching(oldTail) then oldTail.moveDiagonal(newHead)
       else oldTail
 
-    def move(newHead: Position): Rope =
+    private def move(newHead: Position): Rope =
       val newKnots = knots.tail
         .foldLeft(List((knots.head, newHead))) { (initKnots, oldTail) =>
           val (oldHead, newHead) = initKnots.last
@@ -73,11 +72,8 @@ object Day9 extends ZIOAppDefault:
       Rope(newKnots, visited + newKnots.last)
 
     def up: Rope = move(knots.head.up)
-
     def right: Rope = move(knots.head.right)
-
     def down: Rope = move(knots.head.down)
-
     def left: Rope = move(knots.head.left)
 
   object Rope:
