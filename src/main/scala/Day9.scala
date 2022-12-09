@@ -29,7 +29,7 @@ object Day9 extends ZIOAppDefault:
     def distance(other: Position): Int =
       math.abs(x - other.x) + math.abs(y - other.y)
 
-    def touching(other: Position) =
+    def touching(other: Position): Boolean =
       if this == other then true
       else if x == other.x then distance(other) == 1
       else if y == other.y then distance(other) == 1
@@ -42,9 +42,9 @@ object Day9 extends ZIOAppDefault:
       (vertical || horizontal) && steps == 2
 
     def sameMovement(current: Position, next: Position): Position =
-      if x == next.x then Position(x, y + next.y - current.y)
-      else if y == next.y then Position(x + next.x - current.x, y)
-      else Position(x + next.x - current.x, y + next.y - current.y)
+      if x == next.x
+      then Position(x, y + next.y - current.y)
+      else Position(x + next.x - current.x, y)
 
     def moveDiagonal(towards: Position): Position =
       val dx = if x < towards.x then +1 else -1
