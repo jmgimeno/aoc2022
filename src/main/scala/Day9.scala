@@ -42,12 +42,16 @@ object Day9 extends ZIOAppDefault:
       (vertical || horizontal) && steps == 2
 
     def sameMovement(current: Position, next: Position): Position =
-      Position(x + next.x - current.x, y + next.y - current.y)
+      if x == next.x then Position(x, y + next.y - current.y)
+      else if y == next.y then Position(x + next.x - current.x, y)
+      else Position(x + next.x - current.x, y + next.y - current.y)
 
     def moveDiagonal(towards: Position): Position =
       val dx = if x < towards.x then +1 else -1
       val dy = if y < towards.y then +1 else -1
       Position(x + dx, y + dy)
+
+    override def toString = s"($x, $y)"
 
   case class Rope private (
       knots: List[Position],
@@ -69,32 +73,33 @@ object Day9 extends ZIOAppDefault:
         .foldLeft(List((knots.head, newHead))) { (initKnots, oldTail) =>
           val (oldHead, newHead) = initKnots.head
           val newTail = moveTail(oldTail, oldHead, newHead)
-          println(
-            s"oldHead $oldHead; newHead $newHead; oldTail $oldTail -> newTail $newTail"
-          )
+          // println(
+          //   s"oldHead $oldHead; newHead $newHead; oldTail $oldTail -> newTail $newTail"
+          // )
           (oldTail, newTail) :: initKnots
         }
         .map(_._2)
         .reverse
-      val r = Rope(newKnots, visited + newKnots.last)
-      println(r)
-      r
+      Rope(newKnots, visited + newKnots.last)
 
     def up: Rope =
-      println("UP")
+      // println("UP")
       move(knots.head.up)
 
     def right: Rope =
-      println("RIGHT")
+      // println("RIGHT")
       move(knots.head.right)
 
     def down: Rope =
-      println("DOWN")
+      // println("DOWN")
       move(knots.head.down)
 
     def left: Rope =
-      println("LEFT")
-      move(knots.head.left)
+      // println("LEFT")
+      val l = move(knots.head.left)
+      // println(l)
+      // println("-------------------------------------------------------")
+      l
 
   object Rope:
     def make(n: Int = 1): Rope = Rope(
@@ -127,11 +132,14 @@ object Day9 extends ZIOAppDefault:
   def part2[R, E](
       is: ZStream[R, E, String]
   ): ZIO[R, E, Int] =
-    for
-      rope <- is
+    for rope <- is
         .map(Motion.parse)
-        .runFold(Rope.make(10))(Rope.doMotion)
-      _ <- Console.printLine(rope).orDie
+        .runFold(Rope.make(10))((r, m) =>
+          // println(s"Rope: $r")
+          // println(s"Motion: $m")
+          Rope.doMotion(r, m)
+        )
+      // _ <- Console.printLine(rope).orDie
     yield rope.visited.size
 
   val run =

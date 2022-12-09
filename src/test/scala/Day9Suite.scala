@@ -39,12 +39,10 @@ object Day9Suite extends ZIOSpecDefault:
     suite("day9")(
       suite("part1")(
         test("example") {
-          // assertZIO(part1(exampleStream))(equalTo(13))
-          assertTrue(true)
+          assertZIO(part1(exampleStream))(equalTo(13))
         },
         test("input.txt") {
-          // assertZIO(part1(inputStream))(equalTo(5710))
-          assertTrue(true)
+          assertZIO(part1(inputStream))(equalTo(5710))
         }
       ),
       suite("part2")(
@@ -52,11 +50,10 @@ object Day9Suite extends ZIOSpecDefault:
           assertZIO(part2(exampleStream))(equalTo(1))
         },
         test("example2") {
-          // assertZIO(part2(example2Stream))(equalTo(36))
-          assertTrue(true)
+          assertZIO(part2(example2Stream))(equalTo(36))
         },
         test("input.txt") {
-          assertTrue(true)
+          assertZIO(part2(inputStream))(equalTo(2259))
         }
       )
     )
