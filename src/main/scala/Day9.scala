@@ -111,6 +111,10 @@ object Day9 extends ZIOAppDefault:
   def part2[R, E](
       is: ZStream[R, E, String]
   ): ZIO[R, E, Int] =
-    ???
+    for rope <- is
+        .map(Motion.parse)
+        .runFold(Rope.make(10))(Rope.doMotion)
+    yield rope.visited.size
 
-  val run = part1(inputStream).debug("PART1")
+  val run =
+    part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")

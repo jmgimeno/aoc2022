@@ -18,8 +18,22 @@ object Day9Suite extends ZIOSpecDefault:
     "R 2"
   )
 
+  val example2 = List(
+    "R 5",
+    "U 8",
+    "L 8",
+    "D 3",
+    "R 17",
+    "D 10",
+    "L 25",
+    "U 20"
+  )
+
   val exampleStream =
     ZStream.fromIterable(example)
+
+  val example2Stream =
+    ZStream.fromIterable(example2)
 
   lazy val spec =
     suite("day9")(
@@ -33,7 +47,10 @@ object Day9Suite extends ZIOSpecDefault:
       ),
       suite("part2")(
         test("example") {
-          assertTrue(true)
+          assertZIO(part2(exampleStream))(equalTo(1))
+        },
+        test("example2") {
+          assertZIO(part2(example2Stream))(equalTo(36))
         },
         test("input.txt") {
           assertTrue(true)
