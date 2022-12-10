@@ -40,8 +40,6 @@ object Day10 extends ZIOAppDefault:
     def toImage: String =
       pixels.sliding(40, 40).map(_.mkString).mkString("\n")
 
-  case class CRT(sprite: Int, buffer: List[Char])
-
   object CRT:
     def draw(trace: Chunk[CPU]): String =
       (1 to 240)
@@ -60,23 +58,17 @@ object Day10 extends ZIOAppDefault:
       .fromFileName("data/input10.txt")
       .via(ZPipeline.utf8Decode >>> ZPipeline.splitLines)
 
-  def part1[R, E](
-      is: ZStream[R, E, String]
-  ): ZIO[R, E, Int] =
+  def part[R, E, A](
+      process: Chunk[CPU] => A
+  )(is: ZStream[R, E, String]): ZIO[R, E, A] =
     for trace <-
         is.map(Instruction.parse)
           .scan(CPU.make)(_ execute _)
           .runCollect
-    yield trace.signalStrength(20, 60, 100, 140, 180, 220).sum
+    yield process(trace)
 
-  def part2[R, E](
-      is: ZStream[R, E, String]
-  ): ZIO[R, E, String] =
-    for trace <-
-        is.map(Instruction.parse)
-          .scan(CPU.make)(_ execute _)
-          .runCollect
-    yield CRT.draw(trace)
+  val part1 = part(_.signalStrength(20, 60, 100, 140, 180, 220).sum)
+  val part2 = part(CRT.draw)
 
   val run =
     part1(inputStream).debug("PART1")
