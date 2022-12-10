@@ -1,10 +1,6 @@
 import zio.*
 import zio.stream.*
 
-import scala.collection.mutable
-import java.io.File
-import scala.annotation.newMain
-
 object Day9 extends ZIOAppDefault:
 
   enum Motion:
