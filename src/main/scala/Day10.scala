@@ -36,22 +36,17 @@ object Day10 extends ZIOAppDefault:
         cycle * v
       }
 
-  extension (pixels: List[Char])
+  extension (pixels: Seq[Char])
     def toImage: String =
       pixels.sliding(40, 40).map(_.mkString).mkString("\n")
 
   object CRT:
     def draw(trace: Chunk[CPU]): String =
-      (1 to 240)
-        .foldLeft(List.empty[Char]) { case (buffer, cycle) =>
-          val sprite = trace.during(cycle).x
-          val column = (cycle - 1) % 40
-          val pixel =
-            if (sprite - 1 to sprite + 1).contains(column) then '#' else '.'
-          pixel :: buffer
-        }
-        .reverse
-        .toImage
+      (1 to 240).map { cycle =>
+        val sprite = trace.during(cycle).x
+        val column = (cycle - 1) % 40
+        if sprite - 1 <= column && column <= sprite + 1 then '#' else '.'
+      }.toImage
 
   val inputStream =
     ZStream
