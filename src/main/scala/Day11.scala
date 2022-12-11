@@ -21,11 +21,9 @@ object Day11 extends ZIOAppDefault:
       case Plus(n)  => worryLevel + n
       case Squared  => worryLevel * worryLevel
 
-  enum Condition:
-    case DivisibleBy(n: Int)
-
-    def apply(worryLevel: WorryLevel): Boolean = this match
-      case DivisibleBy(n) => worryLevel % n == 0
+  case class Condition(n: Int):
+    def apply(worryLevel: WorryLevel): Boolean =
+      worryLevel % n == 0
 
   case class Test(condition: Condition, ifTrue: MonkeyId, ifFalse: MonkeyId):
     def apply(worryLevel: WorryLevel): MonkeyId =
@@ -34,7 +32,14 @@ object Day11 extends ZIOAppDefault:
   case class MonkeyRule(
       op: Operation,
       test: Test
-  )
+  ):
+    def apply(input: WorryLevel): (WorryLevel, MonkeyId) =
+      val output = input % test.condition.n
+      val monkeyId =
+        if output == 0
+        then test.ifTrue
+        else test.ifFalse
+      (output, monkeyId)
 
   type Items = List[WorryLevel]
 
@@ -49,7 +54,7 @@ object Day11 extends ZIOAppDefault:
       case s"  Operation: new = old * $n"  => Operation.Times(n.toInt)
       case s"  Operation: new = old + $n"  => Operation.Plus(n.toInt)
     def parseCondition(line: String): Condition = line match
-      case s"  Test: divisible by $n" => Condition.DivisibleBy(n.toInt)
+      case s"  Test: divisible by $n" => Condition(n.toInt)
     def parseIf(branch: String, line: String): MonkeyId = line match
       case s"    If $branch: throw to monkey $monkeyId" => monkeyId.toInt
 
@@ -76,8 +81,14 @@ object Day11 extends ZIOAppDefault:
       factor: Int
   ):
 
-    def run(rounds: Int): Simulation =
-      (1 to rounds).foldLeft(this) { (sim, _) => sim.round }
+    def run(rounds: Int): Inspections =
+      (1 to rounds)
+        .foldLeft(this) { (sim, round) =>
+          val nextSym = sim.round
+          // println(s"round $round: ${nextSym.inspections}")
+          nextSym
+        }
+        .inspections
 
     def round: Simulation =
       inventory.keys.toList.sorted.foldLeft(this)(_ round _)
@@ -97,12 +108,44 @@ object Day11 extends ZIOAppDefault:
             )
         }
 
+    def roundSimplifying: Simulation =
+      inventory.keys.toList.sorted.foldLeft(this)(_ roundSimplifying _)
+
+    def roundSimplifying(monkeyId: MonkeyId): Simulation =
+      inventory(monkeyId)
+        .foldLeft(this) { (sim, item) =>
+          val input = sim.rules(monkeyId).op(item) / factor
+          val (worryLevel, throwsTo) = sim.rules(monkeyId)(input)
+          sim
+            .copy(
+              inventory = sim.inventory
+                .updated(throwsTo, sim.inventory(throwsTo) :+ worryLevel)
+                .updated(monkeyId, sim.inventory(monkeyId).tail),
+              inspections =
+                sim.inspections.updated(monkeyId, sim.inspections(monkeyId) + 1)
+            )
+        }
+
     def part1: BigInt =
-      runWithTrace(20)._2.inspections.values.toList.sorted
+      run(20).values.toList.sorted
         .takeRight(2)
         .foldLeft(BigInt(1))(_ * _)
 
-    def runWithTrace(numRounds: Int): (Int, Simulation, Trace, InvTrace) =
+    def runSimplifying(rounds: Int): Inspections =
+      (1 to rounds)
+        .foldLeft(this) { (sim, round) =>
+          val nextSym = sim.roundSimplifying
+          // println(s"round $round: ${nextSym.inspections}")
+          nextSym
+        }
+        .inspections
+
+    def part1Simplifying: BigInt =
+      runSimplifying(20).values.toList.sorted
+        .takeRight(2)
+        .foldLeft(BigInt(1))(_ * _)
+
+    def runWithTrace(numRounds: Int): Inspections =
 
       val trace = mutable.Map.empty[Int, Simulation]
       val invTrace = mutable.Map.empty[Inventory, Int]
@@ -111,18 +154,52 @@ object Day11 extends ZIOAppDefault:
           round: Int,
           simulation: Simulation
       ): (Int, Simulation) =
-        if round >= numRounds || invTrace.contains(simulation.inventory)
+        if round >= numRounds // || invTrace.contains(simulation.inventory)
         then (round, simulation)
         else
           trace += round -> simulation
           invTrace += simulation.inventory -> round
-          runWithTrace(round + 1, simulation.round)
+          runWithTrace(round + 1, simulation.roundSimplifying)
 
-      val (executedRounds, repeatedSym) = runWithTrace(0, this)
-      return (executedRounds, repeatedSym, trace, invTrace)
+      val (executedRounds, lastSim) = runWithTrace(0, this)
+      if executedRounds == numRounds
+      then lastSim.inspections
+      else inferSimulation(numRounds, executedRounds, lastSim, trace, invTrace)
+
+    def inferSimulation(
+        numRounds: Int,
+        lastSeen: Int,
+        lastSym: Simulation,
+        trace: Trace,
+        invTrace: InvTrace
+    ): Inspections =
+      println(s"lastSeen $lastSeen")
+      println(lastSym)
+      val firstSeen = invTrace(lastSym.inventory)
+      println(s"firstSeen $firstSeen")
+      val firstSym = trace(firstSeen)
+      println(firstSym)
+      val period = lastSeen - firstSeen
+      println(s"period $period")
+      val delta = lastSym.inspections - firstSym.inspections
+      println(delta)
+      val remaining = numRounds - lastSeen
+      val cycles = remaining / period
+      val extra = remaining % period
+      println(
+        s"remaining $remaining totalCycles $cycles extraSteps $extra"
+      )
+      val remainingCycles = delta * cycles
+      print(remainingCycles)
+      val extraSteps =
+        trace(firstSeen + extra).inspections - firstSym.inspections
+      println(extraSteps)
+      val result =
+        lastSym.inspections + remainingCycles + extraSteps
+      println(result)
+      result
 
     def part2 =
-      val (rounds, lastSim, trace, invTrace) = runWithTrace(10000)
       ???
 
   object Simulation:
@@ -159,6 +236,13 @@ object Day11 extends ZIOAppDefault:
           .map(Parser.parseMonkey)
           .runCollect
     yield Simulation.make(parsedInput, 3).part1
+
+  def part1Simplifying(is: UStream[String]): Task[BigInt] =
+    for parsedInput <-
+        is.split(_.isEmpty())
+          .map(Parser.parseMonkey)
+          .runCollect
+    yield Simulation.make(parsedInput, 3).part1Simplifying
 
   def part2[A](is: UStream[String]): Task[A] =
     for parsedInput <-

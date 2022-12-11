@@ -50,6 +50,14 @@ object Day11Suite extends ZIOSpecDefault:
           assertZIO(part1(inputStream))(equalTo(56595))
         }
       ),
+      suite("part1-simplifying")(
+        test("example") {
+          assertZIO(part1Simplifying(exampleStream))(equalTo(10605))
+        },
+        test("input.txt") {
+          assertZIO(part1Simplifying(inputStream))(equalTo(56595))
+        }
+      ),
       suite("part2")(
         test("example.txt") {
           assertZIO(part2(exampleStream))(equalTo(BigInt("2713310158")))
