@@ -41,6 +41,14 @@ object Day11 extends ZIOAppDefault:
         else test.ifFalse
       (input, monkeyId)
 
+    def applySimolifying(input: WorryLevel): (WorryLevel, MonkeyId) =
+      val output = input % test.condition.n
+      val monkeyId =
+        if output == 0
+        then test.ifTrue
+        else test.ifFalse
+      (output, monkeyId)
+
   type Items = List[WorryLevel]
 
   object Parser:
@@ -126,7 +134,8 @@ object Day11 extends ZIOAppDefault:
       inventory(monkeyId)
         .foldLeft(this) { (sim, item) =>
           val input = sim.rules(monkeyId).op(item) / factor
-          val (worryLevel, throwsTo) = sim.rules(monkeyId)(input)
+          val (worryLevel, throwsTo) =
+            sim.rules(monkeyId).applySimolifying(input)
           // println(s"monkey $monkeyId throws $worryLevel to $throwsTo")
           sim
             .copy(
@@ -166,30 +175,30 @@ object Day11 extends ZIOAppDefault:
         trace: Trace,
         invTrace: InvTrace
     ): Inspections =
-      println(s"lastSeen $lastSeen")
-      println(lastSym)
+      // println(s"lastSeen $lastSeen")
+      // println(lastSym)
       val firstSeen = invTrace(lastSym.inventory)
-      println(s"firstSeen $firstSeen")
+      // println(s"firstSeen $firstSeen")
       val firstSym = trace(firstSeen)
-      println(firstSym)
+      // println(firstSym)
       val period = lastSeen - firstSeen
-      println(s"period $period")
+      // println(s"period $period")
       val delta = lastSym.inspections - firstSym.inspections
-      println(delta)
+      // println(delta)
       val remaining = numRounds - lastSeen
       val cycles = remaining / period
       val extra = remaining % period
-      println(
-        s"remaining $remaining totalCycles $cycles extraSteps $extra"
-      )
+      // println(
+      //   s"remaining $remaining totalCycles $cycles extraSteps $extra"
+      // )
       val remainingCycles = delta * cycles
-      print(remainingCycles)
+      // print(remainingCycles)
       val extraSteps =
         trace(firstSeen + extra).inspections - firstSym.inspections
-      println(extraSteps)
+      // println(extraSteps)
       val result =
         lastSym.inspections + remainingCycles + extraSteps
-      println(result)
+      // println(result)
       result
 
   object Simulation:

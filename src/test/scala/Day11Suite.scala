@@ -43,12 +43,14 @@ object Day11Suite extends ZIOSpecDefault:
   lazy val spec =
     suite("day11")(
       suite("part1")(
-        test("example") {
-          assertZIO(part1(exampleStream))(equalTo(10605))
-        },
-        test("input.txt") {
-          assertZIO(part1(inputStream))(equalTo(56595))
-        },
+        suite("direct")(
+          test("example") {
+            assertZIO(part1(exampleStream))(equalTo(10605))
+          },
+          test("input.txt") {
+            assertZIO(part1(inputStream))(equalTo(56595))
+          }
+        ),
         suite("simplifying")(
           test("example") {
             assertZIO(part1Simplifying(exampleStream))(equalTo(10605))
@@ -67,12 +69,14 @@ object Day11Suite extends ZIOSpecDefault:
         )
       ),
       suite("part2")(
-        test("example") {
-          assertZIO(part2(exampleStream))(equalTo(2713310158L))
-        },
-        test("input.txt") {
-          assertZIO(part2(inputStream))(equalTo(-1L))
-        } @@ ignore,
+        suite("direct")(
+          test("example") {
+            assertZIO(part2(exampleStream))(equalTo(2713310158L))
+          },
+          test("input.txt") {
+            assertZIO(part2(inputStream))(equalTo(-1L))
+          } @@ ignore
+        ),
         suite("simplifying")(
           test("example") {
             assertZIO(part2Simplifying(exampleStream))(equalTo(2713310158L))
