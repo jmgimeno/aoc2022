@@ -8,7 +8,7 @@ import scala.util.chaining.scalaUtilChainingOps
 
 object Day11 extends ZIOAppDefault:
 
-  type WorryLevel = BigInt
+  type WorryLevel = Int
   type MonkeyId = Int
 
   enum Operation:
@@ -39,7 +39,7 @@ object Day11 extends ZIOAppDefault:
         if output == 0
         then test.ifTrue
         else test.ifFalse
-      (output, monkeyId)
+      (input, monkeyId)
 
   type Items = List[WorryLevel]
 
@@ -48,7 +48,7 @@ object Day11 extends ZIOAppDefault:
       case s"Monkey $monkeyId:" => monkeyId.toInt
     def parseStartingItems(line: String): List[WorryLevel] = line match
       case s"  Starting items: $items" =>
-        items.split(", ").map(BigInt(_)).toList
+        items.split(", ").map(_.toInt).toList
     def parseOperation(line: String): Operation = line match
       case s"  Operation: new = old * old" => Operation.Squared
       case s"  Operation: new = old * $n"  => Operation.Times(n.toInt)
@@ -69,7 +69,7 @@ object Day11 extends ZIOAppDefault:
       (monkeyId, startingItems, MonkeyRule(operation, test))
 
   type Inventory = Map[MonkeyId, Items]
-  type Inspections = Map[MonkeyId, BigInt]
+  type Inspections = Map[MonkeyId, Int]
   type Rules = Map[MonkeyId, MonkeyRule]
   type Trace = mutable.Map[Int, Simulation]
   type InvTrace = mutable.Map[Inventory, Int]
@@ -96,8 +96,9 @@ object Day11 extends ZIOAppDefault:
     def round(monkeyId: MonkeyId): Simulation =
       inventory(monkeyId)
         .foldLeft(this) { (sim, item) =>
-          val worryLevel = sim.rules(monkeyId).op(item) / factor
-          val throwsTo = sim.rules(monkeyId).test(worryLevel)
+          val input = sim.rules(monkeyId).op(item) / factor
+          val (worryLevel, throwsTo) = sim.rules(monkeyId)(input)
+          // println(s"monkey $monkeyId throws $worryLevel to $throwsTo")
           sim
             .copy(
               inventory = sim.inventory
@@ -107,6 +108,16 @@ object Day11 extends ZIOAppDefault:
                 sim.inspections.updated(monkeyId, sim.inspections(monkeyId) + 1)
             )
         }
+
+    def runSimplifying(numRounds: Int): Inspections =
+      (1 to numRounds)
+        .foldLeft(this) { (sim, round) =>
+          // println(s"$round / $numRounds")
+          val nextSym = sim.roundSimplifying
+          // println(s"round $round: ${nextSym.inspections}")
+          nextSym
+        }
+        .inspections
 
     def roundSimplifying: Simulation =
       inventory.keys.toList.sorted.foldLeft(this)(_ roundSimplifying _)
@@ -116,6 +127,7 @@ object Day11 extends ZIOAppDefault:
         .foldLeft(this) { (sim, item) =>
           val input = sim.rules(monkeyId).op(item) / factor
           val (worryLevel, throwsTo) = sim.rules(monkeyId)(input)
+          // println(s"monkey $monkeyId throws $worryLevel to $throwsTo")
           sim
             .copy(
               inventory = sim.inventory
@@ -125,25 +137,6 @@ object Day11 extends ZIOAppDefault:
                 sim.inspections.updated(monkeyId, sim.inspections(monkeyId) + 1)
             )
         }
-
-    def part1: BigInt =
-      run(20).values.toList.sorted
-        .takeRight(2)
-        .foldLeft(BigInt(1))(_ * _)
-
-    def runSimplifying(rounds: Int): Inspections =
-      (1 to rounds)
-        .foldLeft(this) { (sim, round) =>
-          val nextSym = sim.roundSimplifying
-          // println(s"round $round: ${nextSym.inspections}")
-          nextSym
-        }
-        .inspections
-
-    def part1Simplifying: BigInt =
-      runSimplifying(20).values.toList.sorted
-        .takeRight(2)
-        .foldLeft(BigInt(1))(_ * _)
 
     def runWithTrace(numRounds: Int): Inspections =
 
@@ -154,7 +147,7 @@ object Day11 extends ZIOAppDefault:
           round: Int,
           simulation: Simulation
       ): (Int, Simulation) =
-        if round >= numRounds // || invTrace.contains(simulation.inventory)
+        if round >= numRounds || invTrace.contains(simulation.inventory)
         then (round, simulation)
         else
           trace += round -> simulation
@@ -199,16 +192,13 @@ object Day11 extends ZIOAppDefault:
       println(result)
       result
 
-    def part2 =
-      ???
-
   object Simulation:
     def make(
         parsedInput: Chunk[(MonkeyId, Items, MonkeyRule)],
         factor: Int
     ): Simulation =
       val inventory = parsedInput.map((id, inv, _) => id -> inv).toMap
-      val inspections = parsedInput.map((id, inv, _) => id -> BigInt(0)).toMap
+      val inspections = parsedInput.map((id, inv, _) => id -> 0).toMap
       val rules = parsedInput.map((id, _, rule) => id -> rule).toMap
       Simulation(inventory, inspections, rules, factor)
 
@@ -219,10 +209,10 @@ object Day11 extends ZIOAppDefault:
       inspections.map { case (k, v) => k -> (v - other(k)) }
     infix def *(n: Int): Inspections =
       inspections.map { case (k, v) => k -> (v * n) }
-    def metric: BigInt =
+    def longMetric: Long =
       inspections.values.toList.sorted
         .takeRight(2)
-        .foldLeft(BigInt(1))(_ * _)
+        .foldLeft(1L)(_ * _)
 
   val inputStream =
     ZStream
@@ -230,25 +220,56 @@ object Day11 extends ZIOAppDefault:
       .via(ZPipeline.utf8Decode >>> ZPipeline.splitLines)
       .orDie
 
-  def part1(is: UStream[String]): Task[BigInt] =
+  def part1(is: UStream[String]): Task[Long] =
     for parsedInput <-
         is.split(_.isEmpty())
           .map(Parser.parseMonkey)
           .runCollect
-    yield Simulation.make(parsedInput, 3).part1
+    yield Simulation.make(parsedInput, 3).run(20).longMetric
 
-  def part1Simplifying(is: UStream[String]): Task[BigInt] =
+  def part1Simplifying(is: UStream[String]): Task[Long] =
     for parsedInput <-
         is.split(_.isEmpty())
           .map(Parser.parseMonkey)
           .runCollect
-    yield Simulation.make(parsedInput, 3).part1Simplifying
+    yield Simulation.make(parsedInput, 3).runSimplifying(20).longMetric
 
-  def part2[A](is: UStream[String]): Task[A] =
+  def part1SimplifyingWithTrace(is: UStream[String]): Task[Long] =
     for parsedInput <-
         is.split(_.isEmpty())
           .map(Parser.parseMonkey)
           .runCollect
-    yield Simulation.make(parsedInput, 1).part2.asInstanceOf[A]
+    yield Simulation.make(parsedInput, 3).runWithTrace(20).longMetric
 
-  lazy val run = part1(inputStream).debug("PART1")
+  def part2(is: UStream[String]): Task[Long] =
+    for parsedInput <-
+        is.split(_.isEmpty())
+          .map(Parser.parseMonkey)
+          .runCollect
+    yield Simulation.make(parsedInput, 1).run(10_000).longMetric
+
+  def part2Simplifying(is: UStream[String]): Task[Long] =
+    for parsedInput <-
+        is.split(_.isEmpty())
+          .map(Parser.parseMonkey)
+          .runCollect
+    yield Simulation.make(parsedInput, 1).runSimplifying(10_000).longMetric
+
+  def part2SimplifyingWithTrace(is: UStream[String]): Task[Long] =
+    for parsedInput <-
+        is.split(_.isEmpty())
+          .map(Parser.parseMonkey)
+          .runCollect
+    yield Simulation.make(parsedInput, 1).runWithTrace(10_000).longMetric
+
+  lazy val run =
+    part1(inputStream).debug("PART1")
+      *> part1Simplifying(inputStream).debug("PART1-SimpliFying")
+      *> part1SimplifyingWithTrace(inputStream).debug(
+        "PART1-Simplifying-WithTrace"
+      )
+      *> part2(inputStream).debug("PART2")
+      *> part2Simplifying(inputStream).debug("PART2-Simplifying")
+      *> part2SimplifyingWithTrace(inputStream).debug(
+        "PART2-Simplifying-WithTrace"
+      )
