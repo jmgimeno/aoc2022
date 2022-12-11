@@ -33,21 +33,10 @@ object Day11 extends ZIOAppDefault:
       op: Operation,
       test: Test
   ):
-    def apply(input: WorryLevel): (WorryLevel, MonkeyId) =
-      val output = input % test.condition.n
-      val monkeyId =
-        if output == 0
-        then test.ifTrue
-        else test.ifFalse
-      (input, monkeyId)
-
-    def applySimolifying(input: WorryLevel): (WorryLevel, MonkeyId) =
-      val output = input % test.condition.n
-      val monkeyId =
-        if output == 0
-        then test.ifTrue
-        else test.ifFalse
-      (output, monkeyId)
+    def apply(input: WorryLevel): MonkeyId =
+      if input % test.condition.n == 0
+      then test.ifTrue
+      else test.ifFalse
 
   type Items = List[WorryLevel]
 
@@ -86,7 +75,8 @@ object Day11 extends ZIOAppDefault:
       inventory: Inventory,
       inspections: Inspections,
       rules: Rules,
-      factor: Int
+      factor: Int,
+      module: Int
   ):
 
     def run(rounds: Int): Inspections =
@@ -104,8 +94,8 @@ object Day11 extends ZIOAppDefault:
     def round(monkeyId: MonkeyId): Simulation =
       inventory(monkeyId)
         .foldLeft(this) { (sim, item) =>
-          val input = sim.rules(monkeyId).op(item) / factor
-          val (worryLevel, throwsTo) = sim.rules(monkeyId)(input)
+          val worryLevel = sim.rules(monkeyId).op(item) / factor
+          val throwsTo = sim.rules(monkeyId)(worryLevel)
           // println(s"monkey $monkeyId throws $worryLevel to $throwsTo")
           sim
             .copy(
@@ -134,8 +124,8 @@ object Day11 extends ZIOAppDefault:
       inventory(monkeyId)
         .foldLeft(this) { (sim, item) =>
           val input = sim.rules(monkeyId).op(item) / factor
-          val (worryLevel, throwsTo) =
-            sim.rules(monkeyId).applySimolifying(input)
+          val throwsTo = sim.rules(monkeyId)(input)
+          val worryLevel = input % sim.module
           // println(s"monkey $monkeyId throws $worryLevel to $throwsTo")
           sim
             .copy(
@@ -209,7 +199,8 @@ object Day11 extends ZIOAppDefault:
       val inventory = parsedInput.map((id, inv, _) => id -> inv).toMap
       val inspections = parsedInput.map((id, inv, _) => id -> 0).toMap
       val rules = parsedInput.map((id, _, rule) => id -> rule).toMap
-      Simulation(inventory, inspections, rules, factor)
+      val modulo = rules.values.map(_.test.condition.n).foldLeft(1)(_ * _)
+      Simulation(inventory, inspections, rules, factor, modulo)
 
   extension (inspections: Inspections)
     infix def +(other: Inspections): Inspections =
