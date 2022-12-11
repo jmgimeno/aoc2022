@@ -1,8 +1,6 @@
 import zio.*
 import zio.stream.*
 
-import scala.util.chaining.scalaUtilChainingOps
-
 object Day10 extends ZIOAppDefault:
 
   enum Instruction:
