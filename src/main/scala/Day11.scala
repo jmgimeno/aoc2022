@@ -101,7 +101,7 @@ object Day11 extends ZIOAppDefault:
             .copy(
               inventory = sim.inventory
                 .updated(throwsTo, sim.inventory(throwsTo) :+ worryLevel)
-                .updated(monkeyId, sim.inventory(monkeyId).tail),
+                .updated(monkeyId, List.empty),
               inspections =
                 sim.inspections.updated(monkeyId, sim.inspections(monkeyId) + 1)
             )
@@ -123,9 +123,9 @@ object Day11 extends ZIOAppDefault:
     def roundSimplifying(monkeyId: MonkeyId): Simulation =
       inventory(monkeyId)
         .foldLeft(this) { (sim, item) =>
-          val input = sim.rules(monkeyId).op(item) / factor
-          val throwsTo = sim.rules(monkeyId)(input)
-          val worryLevel = input % sim.module
+          val worryLevel = (sim.rules(monkeyId).op(item) / factor) % sim.module
+          val throwsTo = sim.rules(monkeyId)(worryLevel)
+          // val worryLevel = input % sim.module
           // println(s"monkey $monkeyId throws $worryLevel to $throwsTo")
           sim
             .copy(
@@ -199,7 +199,7 @@ object Day11 extends ZIOAppDefault:
       val inventory = parsedInput.map((id, inv, _) => id -> inv).toMap
       val inspections = parsedInput.map((id, inv, _) => id -> 0).toMap
       val rules = parsedInput.map((id, _, rule) => id -> rule).toMap
-      val modulo = rules.values.map(_.test.condition.n).foldLeft(1)(_ * _)
+      val modulo = rules.values.map(_.test.condition.n).toSet.foldLeft(1)(_ * _)
       Simulation(inventory, inspections, rules, factor, modulo)
 
   extension (inspections: Inspections)
@@ -246,21 +246,29 @@ object Day11 extends ZIOAppDefault:
         is.split(_.isEmpty())
           .map(Parser.parseMonkey)
           .runCollect
-    yield Simulation.make(parsedInput, 1).run(10_000).longMetric
+    yield Simulation.make(parsedInput, 1).run(10_000).tap(println).longMetric
 
   def part2Simplifying(is: UStream[String]): Task[Long] =
     for parsedInput <-
         is.split(_.isEmpty())
           .map(Parser.parseMonkey)
           .runCollect
-    yield Simulation.make(parsedInput, 1).runSimplifying(10_000).longMetric
+    yield Simulation
+      .make(parsedInput, 1)
+      .runSimplifying(10_000)
+      .tap(println)
+      .longMetric
 
   def part2SimplifyingWithTrace(is: UStream[String]): Task[Long] =
     for parsedInput <-
         is.split(_.isEmpty())
           .map(Parser.parseMonkey)
           .runCollect
-    yield Simulation.make(parsedInput, 1).runWithTrace(10_000).longMetric
+    yield Simulation
+      .make(parsedInput, 1)
+      .runWithTrace(10_000)
+      .tap(println)
+      .longMetric
 
   lazy val run =
     part1(inputStream).debug("PART1")
