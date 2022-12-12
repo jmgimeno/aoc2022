@@ -62,37 +62,34 @@ object Day12 extends ZIOAppDefault:
       f: Int
   )
 
-  object Candidate:
-    given Ordering[Candidate] with
-      def compare(c1: Candidate, c2: Candidate) =
-        c2.f.compare(c1.f)
-
   case class PathFinder(heightMap: HeightMap):
 
-    def findMin =
+    def findMinPath =
       val neighbours = Bounds(heightMap.height, heightMap.width)
       val g = mutable.Map(heightMap.start -> 0)
       val h1 = (p: Position) => p.distance(heightMap.end)
       val h2 = (p: Position) => 'z' - normalize(heightMap(p))
       val h3 = (p: Position) => math.max(h1(p), h2(p))
       val h4 = (p: Position) => 0
-      val h = h4
+      val h = h3
       val f =
         mutable.Map(heightMap.start -> h(heightMap.start))
 
-      val pending = // priority queues do not have modification of priorities
+      val open = // priority queues do not have modification of priorities
         mutable.Set(heightMap.start)
+
+      val expanded = mutable.Set.empty[Position]
 
       val path =
         mutable.Map.empty[Position, Position]
 
-      @tailrec def loop: Int =
-        println(s"${pending.size} / ${path.size}")
-        if pending.isEmpty then -1
+      @tailrec def loop: List[Position] =
+        if open.isEmpty then assert(false, "Haven't found a path")
         else
-          val current = pending.minBy(f).tap(pending.remove)
+          val current = open.minBy(f).tap(open.remove)
+          expanded += current
           heightMap(current) match
-            case 'E' => getpath(path.toMap).size
+            case 'E' => getpath(path.toMap)
             case rawValue =>
               val value = normalize(rawValue)
               neighbours(current)
@@ -106,7 +103,7 @@ object Day12 extends ZIOAppDefault:
                     path(neighbour) = current
                     g(neighbour) = score
                     f(neighbour) = score + h(neighbour)
-                    pending += neighbour
+                    if !expanded.contains(neighbour) then open += neighbour
                 }
               loop
       loop
@@ -136,13 +133,16 @@ object Day12 extends ZIOAppDefault:
     for
       input <- is.runCollect
       heightMap = Parser.parseMap(input)
-    yield PathFinder(heightMap).tap { h =>
-      // println(h.heightMap.points.debug)
-      // println(h.heightMap.start)
-      // println(h.heightMap.end)
-      // println(h.heightMap.height)
-      // println(h.heightMap.width)
-    }.findMin
+    yield PathFinder(heightMap)
+      .tap { h =>
+        // println(h.heightMap.points.debug)
+        // println(h.heightMap.start)
+        // println(h.heightMap.end)
+        // println(h.heightMap.height)
+        // println(h.heightMap.width)
+      }
+      .findMinPath
+      .size
 
   def part2(is: UStream[String]): Task[Int] =
     ???
