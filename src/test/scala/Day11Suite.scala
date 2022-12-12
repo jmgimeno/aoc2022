@@ -43,57 +43,19 @@ object Day11Suite extends ZIOSpecDefault:
   lazy val spec =
     suite("day11")(
       suite("part1")(
-        suite("direct")(
-          test("example") {
-            assertZIO(part1(exampleStream))(equalTo(10605))
-          },
-          test("input.txt") {
-            assertZIO(part1(inputStream))(equalTo(56595))
-          }
-        ),
-        suite("simplifying")(
-          test("example") {
-            assertZIO(part1Simplifying(exampleStream))(equalTo(10605))
-          },
-          test("input.txt") {
-            assertZIO(part1Simplifying(inputStream))(equalTo(56595))
-          }
-        ),
-        suite("simplifying-with-trace")(
-          test("example") {
-            assertZIO(part1SimplifyingWithTrace(exampleStream))(equalTo(10605))
-          },
-          test("input.txt") {
-            assertZIO(part1SimplifyingWithTrace(inputStream))(equalTo(56595))
-          }
-        )
+        test("example") {
+          assertZIO(part1(exampleStream))(equalTo(10605))
+        },
+        test("input.txt") {
+          assertZIO(part1(inputStream))(equalTo(56595))
+        }
       ),
       suite("part2")(
-        suite("direct")(
-          test("example") {
-            assertZIO(part2(exampleStream))(equalTo(2713310158L))
-          },
-          test("input.txt") {
-            assertZIO(part2(inputStream))(equalTo(-1L))
-          } @@ ignore
-        ),
-        suite("simplifying")(
-          test("example") {
-            assertZIO(part2Simplifying(exampleStream))(equalTo(2713310158L))
-          },
-          test("input.txt") {
-            assertZIO(part2Simplifying(inputStream))(equalTo(-1L))
-          } @@ ignore
-        ),
-        suite("simplifying-with-trace")(
-          test("example") {
-            assertZIO(part2SimplifyingWithTrace(exampleStream))(
-              equalTo(2713310158L)
-            )
-          },
-          test("input.txt") {
-            assertZIO(part2SimplifyingWithTrace(inputStream))(equalTo(-1L))
-          } @@ ignore
-        )
+        test("example") {
+          assertZIO(part2(exampleStream))(equalTo(2713310158L))
+        },
+        test("input.txt") {
+          assertZIO(part2(inputStream))(equalTo(15693274740L))
+        }
       )
     )
