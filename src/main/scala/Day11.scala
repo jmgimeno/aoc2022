@@ -1,9 +1,6 @@
 import zio.*
 import zio.stream.*
 
-import scala.annotation.tailrec
-import scala.collection.mutable
-
 import scala.util.chaining.scalaUtilChainingOps
 
 object Day11 extends ZIOAppDefault:
@@ -79,7 +76,8 @@ object Day11 extends ZIOAppDefault:
       counters: Counters
   ):
     def run(numRounds: Int, reducer: Int): Simulation =
-      val simplifier = this.rules.valuesIterator.map(_.cond.module).product
+      val simplifier =
+        this.rules.valuesIterator.map(_.cond.module).product // thanks @ac_olite
       (1 to numRounds).foldLeft(this) { (sim, round) =>
         val monkeysIds = sim.rules.keySet.toList.sorted
         monkeysIds.foldLeft(sim) { (sim, monkeyId) =>
