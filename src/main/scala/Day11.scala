@@ -84,21 +84,22 @@ object Day11 extends ZIOAppDefault:
         val monkeysIds = sim.rules.keySet.toList.sorted
         monkeysIds.foldLeft(sim) { (sim, monkeyId) =>
           val items = sim.inventory(monkeyId)
-          val updatedSim =
-            items
-              .foldLeft(sim) { (sim, item) =>
-                val (output, target) =
-                  sim.rules(monkeyId)(reducer, simplifier)(item)
-                sim.copy(
-                  inventory = sim.inventory
-                    .updated(target, sim.inventory(target) :+ output)
-                )
-              }
-          updatedSim.copy(
-            inventory = updatedSim.inventory.updated(monkeyId, List.empty),
-            counters = updatedSim.counters
-              .updated(monkeyId, sim.counters(monkeyId) + items.size)
-          )
+          items
+            .foldLeft(sim) { (sim, item) =>
+              val (output, target) =
+                sim.rules(monkeyId)(reducer, simplifier)(item)
+              sim.copy(
+                inventory = sim.inventory
+                  .updated(target, sim.inventory(target) :+ output)
+              )
+            }
+            .pipe { sim =>
+              sim.copy(
+                inventory = sim.inventory.updated(monkeyId, List.empty),
+                counters = sim.counters
+                  .updated(monkeyId, sim.counters(monkeyId) + items.size)
+              )
+            }
         }
       }
 
