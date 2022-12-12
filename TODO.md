@@ -8,3 +8,7 @@
 
 - use an immutable FileSystem implemented as a Zipper
 - then use a ZRef to hold a mutable reference to it
+
+## Day 11
+
+- use a single map for everything and use optics for access/update
