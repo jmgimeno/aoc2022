@@ -95,7 +95,7 @@ object Day12 extends ZIOAppDefault:
               neighbours(current)
                 .filter { neighbour =>
                   val newValue = normalize(heightMap(neighbour))
-                  newValue == value || newValue == value + 1
+                  newValue <= value + 1
                 }
                 .foreach { neighbour =>
                   val score = g(current) + 1
