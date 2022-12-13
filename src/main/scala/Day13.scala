@@ -19,6 +19,11 @@ object Day13 extends ZIOAppDefault:
         if comparisons.forall(_ == 0) then lc.length - rc.length
         else comparisons.find(_ != 0).get
 
+  object IntTree:
+    given Ordering[IntTree] with
+      def compare(left: IntTree, right: IntTree) =
+        left.compareTo(right)
+
   extension (c: Char)
     def isEnd = c == '$'
     def isBranchStart = c == '['
@@ -73,8 +78,19 @@ object Day13 extends ZIOAppDefault:
       .map((_, index) => index + 1)
       .runSum
 
-  def part2(is: UStream[String]): Task[Int] =
-    ZIO.succeed(-1)
+  def part2(trees: List[IntTree]): Int =
+    List(2, 6)
+      .map(num => Parser.parseIntTree(s"[[$num]]")._1)
+      .map(marker => trees.indexOf(marker) + 1)
+      .product
+
+  def part2(is: UStream[String]): Task[Long] =
+    (is ++ ZStream("[[2]]", "[[6]]"))
+      .filterNot(_.isEmpty)
+      .map(Parser.parseIntTree(_)._1)
+      .runCollect
+      .map(_.toList.sorted)
+      .map(part2)
 
   lazy val run =
     part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")

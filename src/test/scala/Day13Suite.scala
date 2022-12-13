@@ -48,10 +48,10 @@ object Day13Suite extends ZIOSpecDefault:
       ),
       suite("part2")(
         test("example") {
-          assertZIO(part2(exampleStream))(equalTo(29))
-        } @@ ignore,
+          assertZIO(part2(exampleStream))(equalTo(140))
+        },
         test("input.txt") {
-          assertZIO(part2(inputStream))(equalTo(399))
-        } @@ ignore
+          assertZIO(part2(inputStream))(equalTo(22464))
+        }
       )
     )
