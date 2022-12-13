@@ -25,7 +25,6 @@ object Day13 extends ZIOAppDefault:
         left.compareTo(right)
 
   extension (c: Char)
-    def isEnd = c == '$'
     def isBranchStart = c == '['
     def isBranchEnd = c == ']'
     def isComma = c == ','
@@ -35,14 +34,14 @@ object Day13 extends ZIOAppDefault:
   object Parser:
 
     def parseBlock(block: Chunk[String]) =
-      block.map(s => parseIntTree(s + "$")._1)
+      block.map(parseIntTree)
 
-    def parseIntTree(input: String): (IntTree, String) =
-      if input(0).isBranchStart then parseBranch(input)
-      else if input(0).isLeafStart then parseLeaf(input)
+    def parseIntTree(input: String): IntTree =
+      if input(0).isBranchStart then parseBranch(input)._1
+      else if input(0).isLeafStart then parseLeaf(input)._1
       else assert(false, "Shouldn't happen")
 
-    def parseBranch(input: String): (IntTree, String) =
+    private def parseBranch(input: String): (IntTree, String) =
       assert(input(0).isBranchStart)
       val children = mutable.ListBuffer.empty[IntTree]
       var rest = input.drop(1)
@@ -58,7 +57,7 @@ object Day13 extends ZIOAppDefault:
           rest = newRest
       (IntTree.Branch(children.toList), rest.drop(1))
 
-    def parseLeaf(input: String) =
+    private def parseLeaf(input: String) =
       assert(input(0).isLeafStart)
       val (number, rest) = input.span(_.isDigit)
       (IntTree.Leaf(number.toInt), rest)
@@ -80,19 +79,19 @@ object Day13 extends ZIOAppDefault:
       .map((_, index) => index + 1)
       .runSum
 
-  def part2(trees: List[IntTree]): Int =
+  def multiplyMarkerPositions(trees: List[IntTree]): Int =
     List(2, 6)
-      .map(num => Parser.parseIntTree(s"[[$num]]")._1)
+      .map(num => Parser.parseIntTree(s"[[$num]]"))
       .map(marker => trees.indexOf(marker) + 1)
       .product
 
   def part2(is: UStream[String]): Task[Long] =
     (is ++ ZStream("[[2]]", "[[6]]"))
       .filterNot(_.isEmpty)
-      .map(Parser.parseIntTree(_)._1)
+      .map(Parser.parseIntTree)
       .runCollect
       .map(_.toList.sorted)
-      .map(part2)
+      .map(multiplyMarkerPositions)
 
   lazy val run =
     part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")
