@@ -12,3 +12,8 @@
 ## Day 11
 
 - use a single map for everything and use optics for access/update
+
+## Day 12
+
+- implement a min-heap that allows to change priority to use in A*
+- in the second part pass the min found to prune the next search

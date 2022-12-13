@@ -24,15 +24,15 @@ object Day12Suite extends ZIOSpecDefault:
           assertZIO(part1(exampleStream))(equalTo(31))
         },
         test("input.txt") {
-          assertTrue(true)
+          assertZIO(part1(inputStream))(equalTo(408))
         }
       ),
       suite("part2")(
         test("example") {
-          assertTrue(true)
+          assertZIO(part2(exampleStream))(equalTo(29))
         },
         test("input.txt") {
-          assertTrue(true)
+          assertZIO(part2(inputStream))(equalTo(399))
         }
       )
     )

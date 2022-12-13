@@ -14,9 +14,13 @@ object Day12 extends ZIOAppDefault:
     def debug = values.map(_.mkString).mkString("\n")
 
     def find(c: A) =
-      val row = values.indexWhere(_.contains(c))
-      val col = values(row).indexWhere(_ == c)
-      Position(row, col)
+      values.findAll(_ == c).head
+
+    def findAll(p: A => Boolean) =
+      for
+        row <- values.zipWithIndex.filter(_._1.exists(p)).map(_._2)
+        col <- values(row).zipWithIndex.filter((a, _) => p(a)).map(_._2)
+      yield Position(row, col)
 
     def apply(pos: Position) =
       val Position(row, col) = pos
@@ -64,32 +68,32 @@ object Day12 extends ZIOAppDefault:
 
   case class PathFinder(heightMap: HeightMap):
 
-    def findMinPath =
+    def findMinPath(start: Position) =
       val neighbours = Bounds(heightMap.height, heightMap.width)
-      val g = mutable.Map(heightMap.start -> 0)
+      val g = mutable.Map(start -> 0)
       val h1 = (p: Position) => p.distance(heightMap.end)
       val h2 = (p: Position) => 'z' - normalize(heightMap(p))
       val h3 = (p: Position) => math.max(h1(p), h2(p))
       val h4 = (p: Position) => 0
       val h = h3
       val f =
-        mutable.Map(heightMap.start -> h(heightMap.start))
+        mutable.Map(start -> h(start))
 
       val open = // priority queues do not have modification of priorities
-        mutable.Set(heightMap.start)
+        mutable.Set(start)
 
       val expanded = mutable.Set.empty[Position]
 
       val path =
         mutable.Map.empty[Position, Position]
 
-      @tailrec def loop: List[Position] =
-        if open.isEmpty then assert(false, "Haven't found a path")
+      @tailrec def loop: Int =
+        if open.isEmpty then Integer.MAX_VALUE
         else
           val current = open.minBy(f).tap(open.remove)
           expanded += current
           heightMap(current) match
-            case 'E' => getpath(path.toMap)
+            case 'E' => getpath(start, path.toMap).size
             case rawValue =>
               val value = normalize(rawValue)
               neighbours(current)
@@ -108,12 +112,15 @@ object Day12 extends ZIOAppDefault:
               loop
       loop
 
-    private def getpath(path: Map[Position, Position]): List[Position] =
+    private def getpath(
+        start: Position,
+        path: Map[Position, Position]
+    ): List[Position] =
       @tailrec def loop(
           current: Position,
           tail: List[Position]
       ): List[Position] =
-        if current == heightMap.start then tail
+        if current == start then tail
         else loop(path(current), current :: tail)
       loop(heightMap.end, List.empty)
 
@@ -129,23 +136,16 @@ object Day12 extends ZIOAppDefault:
       .via(ZPipeline.utf8Decode >>> ZPipeline.splitLines)
       .orDie
 
-  def part1(is: UStream[String]): Task[Int] =
+  def part(starting: Char => Boolean)(is: UStream[String]): Task[Int] =
     for
       input <- is.runCollect
       heightMap = Parser.parseMap(input)
-    yield PathFinder(heightMap)
-      .tap { h =>
-        // println(h.heightMap.points.debug)
-        // println(h.heightMap.start)
-        // println(h.heightMap.end)
-        // println(h.heightMap.height)
-        // println(h.heightMap.width)
-      }
-      .findMinPath
-      .size
+      start = heightMap.points.findAll(starting)
+      finder = PathFinder(heightMap)
+    yield start.map(finder.findMinPath(_)).min
 
-  def part2(is: UStream[String]): Task[Int] =
-    ???
+  val part1 = part(Set('S'))
+  val part2 = part(Set('S', 'a'))
 
   lazy val run =
     part1(inputStream).debug("PART1")
