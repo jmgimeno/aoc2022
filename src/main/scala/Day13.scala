@@ -3,6 +3,7 @@ import zio.stream.*
 
 import scala.collection.mutable
 import scala.util.chaining.scalaUtilChainingOps
+import math.Ordered.orderingToOrdered
 
 object Day13 extends ZIOAppDefault:
 
@@ -10,19 +11,14 @@ object Day13 extends ZIOAppDefault:
     case Leaf(n: Int)
     case Branch(children: List[IntTree])
 
-    def compareTo(other: IntTree): Int = (this, other) match
-      case (Leaf(lv), Leaf(rv))           => lv - rv
-      case (l @ Leaf(lv), r @ Branch(rc)) => Branch(List(l)).compareTo(r)
-      case (l @ Branch(lc), r @ Leaf(rv)) => l.compareTo(Branch(List(r)))
-      case (Branch(lc), Branch(rc)) =>
-        val comparisons = lc.zip(rc).map(_ compareTo _)
-        if comparisons.forall(_ == 0) then lc.length - rc.length
-        else comparisons.find(_ != 0).get
-
   object IntTree:
     given Ordering[IntTree] with
-      def compare(left: IntTree, right: IntTree) =
-        left.compareTo(right)
+      def compare(left: IntTree, right: IntTree) = (left, right) match
+        case (Leaf(lv), Leaf(rv))           => lv - rv
+        case (l @ Leaf(lv), r @ Branch(rc)) => compare(Branch(List(l)), r)
+        case (l @ Branch(lc), r @ Leaf(rv)) => compare(l, Branch(List(r)))
+        case (Branch(lc), Branch(rc)) =>
+          lc.zip(rc).map(compare).find(_ != 0).getOrElse(lc.length - rc.length)
 
   extension (c: Char)
     def isBranchStart = c == '['
@@ -75,7 +71,7 @@ object Day13 extends ZIOAppDefault:
     is.split(_.isEmpty)
       .map(Parser.parseBlock)
       .zipWithIndex
-      .filter((chunk, _) => chunk(0).compareTo(chunk(1)) < 0)
+      .filter((chunk, _) => chunk(0) < chunk(1))
       .map((_, index) => index + 1)
       .runSum
 
