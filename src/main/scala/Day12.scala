@@ -68,8 +68,33 @@ object Day12 extends ZIOAppDefault:
 
   case class PathFinder(heightMap: HeightMap):
 
+    val neighbours = Bounds(heightMap.height, heightMap.width)
+
+    def breathFirst(start: Position) =
+      val open = mutable.Queue(start -> 0)
+      val expanded = mutable.Set.empty[Position]
+
+      @tailrec def loop: Int =
+        if open.isEmpty then Integer.MAX_VALUE
+        else
+          val (current, length) = open.dequeue()
+          expanded += current
+          heightMap(current) match
+            case 'E' => length
+            case rawValue =>
+              val value = normalize(rawValue)
+              neighbours(current)
+                .filter { neighbour =>
+                  normalize(heightMap(neighbour)) <= value + 1
+                }
+                .filterNot { expanded }
+                .foreach { neighbour =>
+                  open += neighbour -> (length + 1)
+                }
+              loop
+      loop
+
     def findMinPath(start: Position) =
-      val neighbours = Bounds(heightMap.height, heightMap.width)
       val g = mutable.Map(start -> 0)
       val h1 = (p: Position) => p.distance(heightMap.end)
       val h2 = (p: Position) => 'z' - normalize(heightMap(p))
@@ -147,6 +172,18 @@ object Day12 extends ZIOAppDefault:
 
   val part1 = part(Set('S'))
   val part2 = part(Set('S', 'a'))
+
+  def partBF(starting: Char => Boolean)(is: UStream[String]): Task[Int] =
+    for
+      input <- is.runCollect
+      heightMap = Parser.parseMap(input)
+      start = heightMap.points.findAll(starting)
+      finder = PathFinder(heightMap)
+      results <- ZIO.foreachPar(start)(s => ZIO.succeed(finder.breathFirst(s)))
+    yield results.min
+
+  val part1BF = partBF(Set('S'))
+  val part2BF = partBF(Set('S', 'a'))
 
   lazy val run =
     part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")
