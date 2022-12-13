@@ -149,4 +149,4 @@ object Day12 extends ZIOAppDefault:
   val part2 = part(Set('S', 'a'))
 
   lazy val run =
-    part1(inputStream).debug("PART1")
+    part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")
