@@ -38,7 +38,9 @@ object Day13 extends ZIOAppDefault:
       block.map(s => parseIntTree(s + "$")._1)
 
     def parseIntTree(input: String): (IntTree, String) =
-      parseBranch(input)
+      if input(0).isBranchStart then parseBranch(input)
+      else if input(0).isLeafStart then parseLeaf(input)
+      else assert(false, "Shouldn't happen")
 
     def parseBranch(input: String): (IntTree, String) =
       assert(input(0).isBranchStart)
