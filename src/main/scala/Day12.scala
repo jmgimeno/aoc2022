@@ -142,7 +142,8 @@ object Day12 extends ZIOAppDefault:
       heightMap = Parser.parseMap(input)
       start = heightMap.points.findAll(starting)
       finder = PathFinder(heightMap)
-    yield start.map(finder.findMinPath(_)).min
+      results <- ZIO.foreachPar(start)(s => ZIO.succeed(finder.findMinPath(s)))
+    yield results.min
 
   val part1 = part(Set('S'))
   val part2 = part(Set('S', 'a'))
