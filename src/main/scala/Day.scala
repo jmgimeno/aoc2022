@@ -18,4 +18,4 @@ object Day extends ZIOAppDefault:
     ZIO.succeed(-1)
 
   lazy val run =
-    part1(inputStream).debug("PART1") *> part1(inputStream).debug("PART1")
+    part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")
