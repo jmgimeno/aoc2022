@@ -17,3 +17,7 @@
 
 - implement a min-heap that allows to change priority to use in A*
 - in the second part pass the min found to prune the next search
+
+## Day 13
+
+- use zio-parse
