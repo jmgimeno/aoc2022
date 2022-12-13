@@ -17,6 +17,7 @@
 
 - implement a min-heap that allows to change priority to use in A*
 - in the second part pass the min found to prune the next search
+- substitute Set[Position] for visited with a boolean matrix
 
 ## Day 13
 
