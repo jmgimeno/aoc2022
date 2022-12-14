@@ -72,13 +72,12 @@ object Day12 extends ZIOAppDefault:
 
     def breathFirst(start: Position) =
       val open = mutable.Queue(start -> 0)
-      val expanded = mutable.Set.empty[Position]
+      val seen = mutable.Set(start)
 
       @tailrec def loop: Int =
         if open.isEmpty then Integer.MAX_VALUE
         else
           val (current, length) = open.dequeue()
-          expanded += current
           heightMap(current) match
             case 'E' => length
             case rawValue =>
@@ -87,9 +86,10 @@ object Day12 extends ZIOAppDefault:
                 .filter { neighbour =>
                   normalize(heightMap(neighbour)) <= value + 1
                 }
-                .filterNot { expanded }
+                .filterNot { seen }
                 .foreach { neighbour =>
                   open += neighbour -> (length + 1)
+                  seen += neighbour
                 }
               loop
       loop

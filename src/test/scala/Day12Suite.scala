@@ -34,7 +34,7 @@ object Day12Suite extends ZIOSpecDefault:
         },
         test("input.txt") {
           assertZIO(part1BF(inputStream))(equalTo(408))
-        } @@ ignore
+        }
       ),
       suite("part2")(
         test("example") {
@@ -51,5 +51,5 @@ object Day12Suite extends ZIOSpecDefault:
         test("input.txt") {
           assertZIO(part2BF(inputStream))(equalTo(399))
         }
-      ) @@ ignore
+      )
     )
