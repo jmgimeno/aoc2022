@@ -32,12 +32,16 @@ object Day14 extends ZIOAppDefault:
     private def steps =
       List(Coord(x, y + 1), Coord(x - 1, y + 1), Coord(x + 1, y + 1))
 
-    def atRestOrEscaped(advance: Coord => Boolean): Coord =
+    def atRestOrEscaped(
+        advance: Coord => Boolean,
+        escape: Coord => Boolean
+    ): Coord =
       @tailrec def forward(coord: Coord): Coord =
-        println(s"coord: $coord")
         coord.steps.find(advance) match
-          case Some(next) => forward(next)
-          case None       => coord
+          case Some(next) =>
+            if escape(next) then next
+            else forward(next)
+          case None => coord
       forward(this)
 
   object Parser:
@@ -69,15 +73,14 @@ object Day14 extends ZIOAppDefault:
         val start = Coord(500, 0)
         assert(!atRest(start) && !rock.occupies(start), "start should be free")
         val stop =
-          start.atRestOrEscaped(c =>
-            !atRest(c) && !rock.occupies(c) && !rock.escapes(c)
+          start.atRestOrEscaped(
+            c => !atRest(c) && !rock.occupies(c),
+            c => rock.escapes(c)
           )
-        println(s"start $start stop $stop")
         if atRest.size > 1 then SimulationResult(-1)
         if rock.escapes(stop) then SimulationResult(atRest.size)
         else
           atRest += stop
-          println(s"atrest: $atRest")
           loop
       loop
 
