@@ -22,3 +22,8 @@
 ## Day 13
 
 - use zio-parse
+
+## Day 14
+
+- the idea of filtering out the segments outside the event horizon seems to not work
+- maybe the idea is to find a recurrence between the lines in the final configuration
