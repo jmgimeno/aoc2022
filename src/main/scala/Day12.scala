@@ -98,25 +98,19 @@ object Day12 extends ZIOAppDefault:
       val g = mutable.Map(start -> 0)
       val h1 = (p: Position) => p.distance(heightMap.end)
       val h2 = (p: Position) => 'z' - normalize(heightMap(p))
-      val h3 = (p: Position) => math.max(h1(p), h2(p))
-      val h4 = (p: Position) => 0
-      val h = h3
-      val f =
-        mutable.Map(start -> h(start))
+      val h = (p: Position) => math.max(h1(p), h2(p))
+      val f = mutable.Map(start -> h(start))
 
       val open = // priority queues do not have modification of priorities
         mutable.Set(start)
 
-      val expanded = mutable.Set.empty[Position]
-
-      val path =
-        mutable.Map.empty[Position, Position]
+      val seen = mutable.Set(start)
+      val path = mutable.Map.empty[Position, Position]
 
       @tailrec def loop: Int =
         if open.isEmpty then Integer.MAX_VALUE
         else
           val current = open.minBy(f).tap(open.remove)
-          expanded += current
           heightMap(current) match
             case 'E' => getpath(start, path.toMap).size
             case rawValue =>
@@ -132,7 +126,10 @@ object Day12 extends ZIOAppDefault:
                     path(neighbour) = current
                     g(neighbour) = score
                     f(neighbour) = score + h(neighbour)
-                    if !expanded.contains(neighbour) then open += neighbour
+                    if !seen(neighbour)
+                    then
+                      open += neighbour
+                      seen += current
                 }
               loop
       loop
