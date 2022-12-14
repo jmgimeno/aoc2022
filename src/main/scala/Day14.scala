@@ -10,14 +10,17 @@ object Day14 extends ZIOAppDefault:
   enum Segment:
     case Horizontal(left: Int, right: Int, at: Int)
     case Vertical(top: Int, bottom: Int, at: Int)
+    case Bottom(at: Int)
 
     def yMax = this match
       case Horizontal(left, right, at) => at
       case Vertical(top, bottom, at)   => bottom
+      case Bottom(at)                  => at
 
     def occupies(coord: Coord) = (this, coord) match
       case (Horizontal(l, r, a), Coord(x, y)) => a == y && l <= x && x <= r
       case (Vertical(t, b, a), Coord(x, y))   => a == x && t <= y && y <= b
+      case (Bottom(a), Coord(x, y))           => y == a
 
   case class Rock(segments: List[Segment]):
     val yMax = segments.map(_.yMax).max
@@ -42,6 +45,15 @@ object Day14 extends ZIOAppDefault:
             if escape(next) then next
             else forward(next)
           case None => coord
+      forward(this)
+
+    def atRest(
+        advance: Coord => Boolean
+    ): Coord =
+      @tailrec def forward(coord: Coord): Coord =
+        coord.steps.find(advance) match
+          case Some(next) => forward(next)
+          case None       => coord
       forward(this)
 
   object Parser:
@@ -70,17 +82,28 @@ object Day14 extends ZIOAppDefault:
     def run: SimulationResult =
       val atRest = mutable.Set.empty[Coord]
       @tailrec def loop: SimulationResult =
-        val start = Coord(500, 0)
-        assert(!atRest(start) && !rock.occupies(start), "start should be free")
-        val stop =
-          start.atRestOrEscaped(
-            c => !atRest(c) && !rock.occupies(c),
-            c => rock.escapes(c)
+        val current = Coord(500, 0)
+        val next =
+          current.atRestOrEscaped(
+            next => !atRest(next) && !rock.occupies(next),
+            next => rock.escapes(next)
           )
-        if atRest.size > 1 then SimulationResult(-1)
-        if rock.escapes(stop) then SimulationResult(atRest.size)
+        if rock.escapes(next) then SimulationResult(atRest.size)
         else
-          atRest += stop
+          atRest += next
+          loop
+      loop
+
+  case class Simulator2(rock: Rock):
+    def run: SimulationResult =
+      val atRest = mutable.Set.empty[Coord]
+      @tailrec def loop: SimulationResult =
+        val current = Coord(500, 0)
+        val next =
+          current.atRest(next => !atRest(next) && !rock.occupies(next))
+        if (current == next) then SimulationResult(atRest.size + 1)
+        else
+          atRest += next
           loop
       loop
 
@@ -98,7 +121,13 @@ object Day14 extends ZIOAppDefault:
     yield Simulator(rock).run.unitsAtRest
 
   def part2(is: UStream[String]): Task[Int] =
-    ZIO.succeed(-1)
+    for rock <-
+        is.flatMap(line => ZStream.fromIterable(Parser.parsePath(line)))
+          .runCollect
+          .map(_.toList.pipe(Rock.apply))
+        bottom = Segment.Bottom(rock.yMax + 2)
+        newRock = Rock(bottom :: rock.segments)
+    yield Simulator2(newRock).run.unitsAtRest
 
   lazy val run =
     part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")
