@@ -3,11 +3,11 @@ import zio.stream.*
 
 import scala.util.chaining.scalaUtilChainingOps
 
-object XXX extends ZIOAppDefault:
+object DayXXX extends ZIOAppDefault:
 
   lazy val inputStream =
     ZStream
-      .fromFileName("data/XXX.txt")
+      .fromFileName("data/inputXXX.txt")
       .via(ZPipeline.utf8Decode >>> ZPipeline.splitLines)
       .orDie
 

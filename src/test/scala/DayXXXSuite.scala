@@ -5,9 +5,9 @@ import zio.test.*
 import zio.test.Assertion.*
 import zio.test.TestAspect.*
 
-import XXX.*
+import DayXXX.*
 
-object XXXSuite extends ZIOSpecDefault:
+object DayXXXSuite extends ZIOSpecDefault:
 
   lazy val example =
     """
