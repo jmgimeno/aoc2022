@@ -31,22 +31,6 @@ object Day14 extends ZIOAppDefault:
     def escapes(coord: Coord) =
       coord.y > yMax
 
-    def eventHorizon =
-      // Does not filter out any segment
-      Rock {
-        segments.filter { segment =>
-          segment match
-            case Segment.Horizontal(l, r, at) =>
-              val eL = 500 - at
-              val eR = 500 + at
-              l <= eR || r >= eL
-            case Segment.Vertical(top, bottom, at) =>
-              val eY = math.abs(500 - at)
-              eY <= bottom
-            case _ => assert(false, "shouldn't happen")
-        }
-      }
-
   case class Coord(x: Int, y: Int):
     def steps =
       List(Coord(x, y + 1), Coord(x - 1, y + 1), Coord(x + 1, y + 1))
@@ -95,25 +79,25 @@ object Day14 extends ZIOAppDefault:
           loop
       loop
 
-    def simulatePart2 =
-      val atRest = mutable.Set.empty[Coord]
-
-      extension (coord: Coord)
-        def forwardToRest =
-          @tailrec def forward(coord: Coord): Coord =
-            coord.steps.find(n => !atRest(n) && !rock.occupies(n)) match
-              case Some(next) => forward(next)
-              case None       => coord
-          forward(coord)
-
-      @tailrec def loop: Int =
-        val current = Coord(500, 0)
-        val next = current.forwardToRest
-        if (current == next) then atRest.size + 1
-        else
-          atRest += next
-          loop
-      loop
+    def computePart2 =
+      (1 to rock.yMax + 1)
+        .foldLeft((Set(Coord(500, 0)), 1)) {
+          case ((previousLevel, counter), y) =>
+            val currentLevel =
+              (500 - y to 500 + y).foldLeft(Set.empty[Coord]) {
+                (currentLevel, x) =>
+                  val current = Coord(x, y)
+                  val antecessors =
+                    (x - 1 to x + 1).map(Coord(_, y - 1))
+                  if !rock.occupies(current) && antecessors.exists(
+                      previousLevel
+                    )
+                  then currentLevel + current
+                  else currentLevel
+              }
+            (currentLevel, counter + currentLevel.size)
+        }
+        ._2
 
   lazy val inputStream =
     ZStream
@@ -129,14 +113,11 @@ object Day14 extends ZIOAppDefault:
     yield Simulator(rock).simulatePart1
 
   def part2(is: UStream[String]): Task[Int] =
-    for
-      rock <-
+    for rock <-
         is.flatMap(line => ZStream.fromIterable(Parser.parsePath(line)))
           .runCollect
           .map(_.toList.pipe(Rock.apply))
-      bottom = Segment.Bottom(rock.yMax + 2)
-      newRock = Rock(bottom :: rock.segments)
-    yield Simulator(newRock).simulatePart2
+    yield Simulator(rock).computePart2
 
   lazy val run =
     part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")
