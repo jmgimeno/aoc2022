@@ -25,3 +25,8 @@
 
 - the idea of filtering out the segments outside the event horizon seems to not work
 - maybe the idea is to find a recurrence between the lines in the final configuration
+- hypothesis:
+  - go level by level from top to bottom
+  - a position is filled if
+    - it is not rock
+    - it has an UP,  UP-LEFT or UP-RIGHT filled
