@@ -17,7 +17,7 @@ object Day15 extends ZIOAppDefault:
       yield Position(px, py)).toSet
     def inBounds(limit: Int) =
       0 <= x && x <= limit && 0 <= y && y <= limit
-    def part2 = 4_000_000 * x + y
+    def part2 = 4_000_000L * x + y
 
   case class Range(begin: Int, endIncluded: Int):
     def toSet = (begin to endIncluded).toSet
@@ -45,18 +45,20 @@ object Day15 extends ZIOAppDefault:
           range.toSet
         }
         .toArray
-      foldTree(array, 0, array.length)
+      foldTree(array)
 
-    private def foldTree(
-        array: Array[Set[Int]],
-        begin: Int,
-        end: Int
-    ): Set[Int] =
-      if begin == end then Set.empty
-      else if begin == end - 1 then array(begin)
-      else
-        var mid = (begin + end) / 2
-        foldTree(array, begin, mid) union foldTree(array, mid, end)
+    private def foldTree[A](array: Array[Set[A]]) =
+      def foldTree(
+          array: Array[Set[A]],
+          begin: Int,
+          end: Int
+      ): Set[A] =
+        if begin == end then Set.empty[A]
+        else if begin == end - 1 then array(begin)
+        else
+          var mid = (begin + end) / 2
+          foldTree(array, begin, mid) union foldTree(array, mid, end)
+      foldTree(array, 0, array.length)
 
     private def coveredAt(row: Int) =
       readings
@@ -89,8 +91,19 @@ object Day15 extends ZIOAppDefault:
         .foreach(included.remove)
       included.size
 
-    def findUncovered(limit: Int): Int =
-      ???
+    def findUncovered(limit: Int): Long =
+      readings
+        .map(_.outerPerimeter)
+        .map(_.filter(_.inBounds(limit)))
+        .toArray
+        .pipe(foldTree)
+        .find(pos =>
+          readings.forall(reading =>
+            reading.sensor.manhattan(pos) > reading.radius
+          )
+        )
+        .map(_.part2)
+        .get
 
   lazy val inputStream =
     ZStream
@@ -105,7 +118,7 @@ object Day15 extends ZIOAppDefault:
         .map(readings => Report(readings.toList))
     yield report.notPresentAt3(row)
 
-  def part2(bound: Int)(is: UStream[String]): Task[Int] =
+  def part2(bound: Int)(is: UStream[String]): Task[Long] =
     for report <- is
         .map(Reading.parse)
         .runCollect

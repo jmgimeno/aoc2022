@@ -28,4 +28,5 @@
 
 ## Day 15
 
-- consider intersection-trees for part1
+- intersection-trees for part1
+- optimize via not building the whole set of candidates
