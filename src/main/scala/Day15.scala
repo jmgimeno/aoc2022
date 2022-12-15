@@ -24,10 +24,6 @@ object Day15 extends ZIOAppDefault:
     val radius = sensor manhattan beacon
     val minX = sensor.x - radius
     val maxX = sensor.x + radius
-    def notPresentAt(y: Int) =
-      val diff = radius - math.abs(y - sensor.y)
-      if diff < 0 then None
-      else Some(Range(sensor.x - diff, sensor.x + diff))
     def outerPerimeter =
       sensor.circumference(radius + 1)
     def includes(position: Position) =
@@ -45,12 +41,11 @@ object Day15 extends ZIOAppDefault:
     def notPresentAt(row: Int) =
       val covered = (minX to maxX)
         .map { x => Position(x, row) }
-        .filter { position =>
+        .count { position =>
           readings.exists { reading =>
             reading.includes(position)
           }
         }
-        .size
       val beacons =
         readings.filter(_.beacon.y == row).map(_.beacon.x).toSet.size
       covered - beacons
