@@ -1,6 +1,7 @@
 import zio.*
 import zio.stream.*
 
+import scala.collection.mutable
 import scala.util.chaining.scalaUtilChainingOps
 
 object Day15 extends ZIOAppDefault:
@@ -25,6 +26,27 @@ object Day15 extends ZIOAppDefault:
         Reading(Position(sx.toInt, sy.toInt), Position(bx.toInt, by.toInt))
 
   case class Report(readings: List[Reading]):
+
+    private def coveredAt2(row: Int) =
+      val array = readings
+        .map(_.notPresentAt(row))
+        .collect { case Some(range) =>
+          range.toSet
+        }
+        .toArray
+      foldTree(array, 0, array.length)
+
+    private def foldTree(
+        array: Array[Set[Int]],
+        begin: Int,
+        end: Int
+    ): Set[Int] =
+      if begin == end then Set.empty
+      else if begin == end - 1 then array(begin)
+      else
+        var mid = (begin + end) / 2
+        foldTree(array, begin, mid) union foldTree(array, mid, end)
+
     private def coveredAt(row: Int) =
       readings
         .map(_.notPresentAt(row))
@@ -39,6 +61,23 @@ object Day15 extends ZIOAppDefault:
     def notPresentAt(row: Int) =
       (coveredAt(row) diff beaconsAt(row)).size
 
+    def notPresentAt2(row: Int) =
+      (coveredAt2(row) diff beaconsAt(row)).size
+
+    def notPresentAt3(row: Int) =
+      // most efficient one
+      val included = mutable.Set[Int]()
+      readings.foreach { reading =>
+        reading.notPresentAt(row).foreach { range =>
+          included.addAll(range.begin to range.endIncluded)
+        }
+      }
+      readings
+        .filter(_.beacon.y == row)
+        .map(_.beacon.x)
+        .foreach(included.remove)
+      included.size
+
   lazy val inputStream =
     ZStream
       .fromFileName("data/input15.txt")
@@ -50,7 +89,7 @@ object Day15 extends ZIOAppDefault:
         .map(Reading.parse)
         .runCollect
         .map(readings => Report(readings.toList))
-    yield report.notPresentAt(row)
+    yield report.notPresentAt3(row)
 
   def part2(is: UStream[String]): Task[Int] =
     ZIO.succeed(-1)
