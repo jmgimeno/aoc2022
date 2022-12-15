@@ -18,11 +18,12 @@ object Day15 extends ZIOAppDefault:
     def inBounds(limit: Int) =
       0 <= x && x <= limit && 0 <= y && y <= limit
 
-  case class Range(begin: Int, endIncluded: Int):
-    def toSet = (begin to endIncluded).toSet
+  case class Range(begin: Int, endIncluded: Int)
 
   case class Reading(sensor: Position, beacon: Position):
     val radius = sensor manhattan beacon
+    val minX = sensor.x - radius
+    val maxX = sensor.x + radius
     def notPresentAt(y: Int) =
       val diff = radius - math.abs(y - sensor.y)
       if diff < 0 then None
@@ -38,20 +39,21 @@ object Day15 extends ZIOAppDefault:
         Reading(Position(sx.toInt, sy.toInt), Position(bx.toInt, by.toInt))
 
   case class Report(readings: List[Reading]):
+    val minX = readings.map(_.minX).min
+    val maxX = readings.map(_.maxX).max
 
     def notPresentAt(row: Int) =
-      // most efficient one
-      val included = mutable.Set[Int]()
-      readings.foreach { reading =>
-        reading.notPresentAt(row).foreach { range =>
-          included.addAll(range.begin to range.endIncluded)
+      val covered = (minX to maxX)
+        .map { x => Position(x, row) }
+        .filter { position =>
+          readings.exists { reading =>
+            reading.includes(position)
+          }
         }
-      }
-      readings
-        .filter(_.beacon.y == row)
-        .map(_.beacon.x)
-        .foreach(included.remove)
-      included.size
+        .size
+      val beacons =
+        readings.filter(_.beacon.y == row).map(_.beacon.x).toSet.size
+      covered - beacons
 
     extension [A, B](list: List[A])
       def findSome(p: A => Option[B]): Option[B] = list match
