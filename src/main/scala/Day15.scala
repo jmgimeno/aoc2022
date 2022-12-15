@@ -66,7 +66,7 @@ object Day15 extends ZIOAppDefault:
             .filter(_.inBounds(limit))
             .find { position =>
               readings
-                .filterNot(_ == currentReading) // it's outside reading
+                .filterNot(_ == currentReading) // it's outside currentReading
                 .forall { otherReading =>
                   !otherReading.includes(position)
                 }
