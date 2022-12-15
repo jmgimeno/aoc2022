@@ -19,3 +19,4 @@
 - Day 12: Hill Climbing Algorithm
 - Day 13: Distress Signal
 - Day 14: Regolith Reservoir
+- Day 15: Beacon Exclusion Zone
