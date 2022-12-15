@@ -43,6 +43,6 @@ object Day15Suite extends ZIOSpecDefault:
         },
         test("input.txt") {
           assertZIO(part2(4_000_000)(inputStream))(equalTo(13360899249595L))
-        } @@ ignore // too slow
+        } @@ ignore
       )
     )

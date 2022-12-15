@@ -17,7 +17,6 @@ object Day15 extends ZIOAppDefault:
       yield Position(px, py)).toSet
     def inBounds(limit: Int) =
       0 <= x && x <= limit && 0 <= y && y <= limit
-    def part2 = 4_000_000L * x + y
 
   case class Range(begin: Int, endIncluded: Int):
     def toSet = (begin to endIncluded).toSet
@@ -30,6 +29,8 @@ object Day15 extends ZIOAppDefault:
       else Some(Range(sensor.x - diff, sensor.x + diff))
     def outerPerimeter =
       sensor.circumference(radius + 1)
+    def includes(position: Position) =
+      sensor.manhattan(position) <= radius
 
   object Reading:
     def parse(line: String) = line match
@@ -38,46 +39,7 @@ object Day15 extends ZIOAppDefault:
 
   case class Report(readings: List[Reading]):
 
-    private def coveredAt2(row: Int) =
-      val array = readings
-        .map(_.notPresentAt(row))
-        .collect { case Some(range) =>
-          range.toSet
-        }
-        .toArray
-      foldTree(array)
-
-    private def foldTree[A](array: Array[Set[A]]) =
-      def foldTree(
-          array: Array[Set[A]],
-          begin: Int,
-          end: Int
-      ): Set[A] =
-        if begin == end then Set.empty[A]
-        else if begin == end - 1 then array(begin)
-        else
-          var mid = (begin + end) / 2
-          foldTree(array, begin, mid) union foldTree(array, mid, end)
-      foldTree(array, 0, array.length)
-
-    private def coveredAt(row: Int) =
-      readings
-        .map(_.notPresentAt(row))
-        .collect { case Some(range) =>
-          range.toSet
-        }
-        .foldLeft(Set.empty[Int])(_ union _)
-
-    private def beaconsAt(row: Int) =
-      readings.filter(_.beacon.y == row).map(_.beacon.x).toSet
-
     def notPresentAt(row: Int) =
-      (coveredAt(row) diff beaconsAt(row)).size
-
-    def notPresentAt2(row: Int) =
-      (coveredAt2(row) diff beaconsAt(row)).size
-
-    def notPresentAt3(row: Int) =
       // most efficient one
       val included = mutable.Set[Int]()
       readings.foreach { reading =>
@@ -91,19 +53,26 @@ object Day15 extends ZIOAppDefault:
         .foreach(included.remove)
       included.size
 
-    def findUncovered(limit: Int): Long =
+    extension [A, B](list: List[A])
+      def findSome(p: A => Option[B]): Option[B] = list match
+        case head :: tail => p(head).orElse(tail.findSome(p))
+        case Nil          => None
+
+    def findUncovered(limit: Int) =
+      // if it's only one possible point => it's in the outer rim of a reading
       readings
-        .map(_.outerPerimeter)
-        .map(_.filter(_.inBounds(limit)))
-        .toArray
-        .pipe(foldTree)
-        .find(pos =>
-          readings.forall(reading =>
-            reading.sensor.manhattan(pos) > reading.radius
-          )
-        )
-        .map(_.part2)
-        .get
+        .findSome { currentReading =>
+          currentReading.outerPerimeter
+            .filter(_.inBounds(limit))
+            .find { position =>
+              readings
+                .filterNot(_ == currentReading) // it's outside reading
+                .forall { otherReading =>
+                  !otherReading.includes(position)
+                }
+            }
+        }
+        .getOrElse(assert(false, "should't happend"))
 
   lazy val inputStream =
     ZStream
@@ -116,14 +85,16 @@ object Day15 extends ZIOAppDefault:
         .map(Reading.parse)
         .runCollect
         .map(readings => Report(readings.toList))
-    yield report.notPresentAt3(row)
+    yield report.notPresentAt(row)
 
   def part2(bound: Int)(is: UStream[String]): Task[Long] =
     for report <- is
         .map(Reading.parse)
         .runCollect
         .map(readings => Report(readings.toList))
-    yield report.findUncovered(bound)
+    yield report
+      .findUncovered(bound)
+      .pipe(pos => 4_000_000L * pos.x + pos.y)
 
   lazy val run =
     part1(2_000_000)(inputStream).debug("PART1")
