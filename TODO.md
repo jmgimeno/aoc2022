@@ -25,3 +25,7 @@
 
 - organize segments into a tree to not use all of them for each point
 - or simply use a set of points for all of them
+
+## Day 15
+
+- consider intersection-trees for part1

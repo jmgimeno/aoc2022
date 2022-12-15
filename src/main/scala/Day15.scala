@@ -9,6 +9,15 @@ object Day15 extends ZIOAppDefault:
   case class Position(x: Int, y: Int):
     def manhattan(other: Position) =
       math.abs(x - other.x) + math.abs(y - other.y)
+    def circumference(radius: Int) =
+      (for
+        d <- 0 to radius
+        px <- List(x - d, x + d)
+        py <- List(y - radius + d, y + radius - d)
+      yield Position(px, py)).toSet
+    def inBounds(limit: Int) =
+      0 <= x && x <= limit && 0 <= y && y <= limit
+    def part2 = 4_000_000 * x + y
 
   case class Range(begin: Int, endIncluded: Int):
     def toSet = (begin to endIncluded).toSet
@@ -19,6 +28,8 @@ object Day15 extends ZIOAppDefault:
       val diff = radius - math.abs(y - sensor.y)
       if diff < 0 then None
       else Some(Range(sensor.x - diff, sensor.x + diff))
+    def outerPerimeter =
+      sensor.circumference(radius + 1)
 
   object Reading:
     def parse(line: String) = line match
@@ -78,6 +89,9 @@ object Day15 extends ZIOAppDefault:
         .foreach(included.remove)
       included.size
 
+    def findUncovered(limit: Int): Int =
+      ???
+
   lazy val inputStream =
     ZStream
       .fromFileName("data/input15.txt")
@@ -91,10 +105,13 @@ object Day15 extends ZIOAppDefault:
         .map(readings => Report(readings.toList))
     yield report.notPresentAt3(row)
 
-  def part2(is: UStream[String]): Task[Int] =
-    ZIO.succeed(-1)
+  def part2(bound: Int)(is: UStream[String]): Task[Int] =
+    for report <- is
+        .map(Reading.parse)
+        .runCollect
+        .map(readings => Report(readings.toList))
+    yield report.findUncovered(bound)
 
   lazy val run =
-    part1(2_000_000)(inputStream).debug("PART1") *> part2(inputStream).debug(
-      "PART2"
-    )
+    part1(2_000_000)(inputStream).debug("PART1")
+      *> part2(4_000_000)(inputStream).debug("PART2")
