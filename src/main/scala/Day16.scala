@@ -44,15 +44,23 @@ object Day16 extends ZIOAppDefault:
           path: List[String] = List.empty
       ):
         def nexts: List[State] =
-          scan.output(current).map { nextValve =>
-            copy(
-              current = nextValve,
-              minute = minute + 1,
-              path = nextValve :: path
-            )
-          }
+          scan
+            .output(current)
+            .map { nextValve =>
+              copy(
+                current = nextValve,
+                minute = minute + 1,
+                path = nextValve :: path
+              )
+            }
+            .filter { state =>
+              state.opened.size < scan.openableValves
+            }
       end State
 
+      // calc result flow when no more valves can be opened
+      // calc maxflow atainable opening all remainnin valves
+      // purge if expected flo is lower than best to far
       def loop(
           fringe: Vector[State],
           bestSoFar: Int
@@ -63,20 +71,17 @@ object Day16 extends ZIOAppDefault:
             if current.minute > maxMinutes then bestSoFar
             else
               val State(name, minute, flow, opened, path) = current
-              // rethink !!! (maybe filter in nexts)
-              if ??? then loop(rest, bestSoFar)
-              else
-                val newFlow = flow + opened.map(scan.rate).sum
-                val newOpened =
-                  if (scan.rate(name) != 0) then opened + name else opened
-                val nextBest = math.max(newFlow, bestSoFar)
-                val nexts = current
-                  .copy(
-                    opened = newOpened,
-                    flow = newFlow
-                  )
-                  .nexts
-                loop(rest ++ nexts, nextBest)
+              val newFlow = flow + opened.map(scan.rate).sum
+              val newOpened =
+                if (scan.rate(name) != 0) then opened + name else opened
+              val nextBest = math.max(newFlow, bestSoFar)
+              val nexts = current
+                .copy(
+                  opened = newOpened,
+                  flow = newFlow
+                )
+                .nexts
+              loop(rest ++ nexts, nextBest)
           case _ => assert(false, "havent't found")
       loop(Vector(State(scan.startingValve)), 1)
     end findMaxFlow
