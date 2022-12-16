@@ -10,8 +10,7 @@ import DayXXX.*
 object DayXXXSuite extends ZIOSpecDefault:
 
   lazy val example =
-    """
-    """.stripMargin
+    """""".stripMargin
 
   lazy val exampleStream = ZStream.fromIterable(example.split("\n"))
 
