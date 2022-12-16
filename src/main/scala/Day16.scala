@@ -63,7 +63,7 @@ object Day16 extends ZIOAppDefault:
             if current.minute > maxMinutes then bestSoFar
             else
               val State(name, minute, flow, opened, path) = current
-              // rethink !!!
+              // rethink !!! (maybe filter in nexts)
               if ??? then loop(rest, bestSoFar)
               else
                 val newFlow = flow + opened.map(scan.rate).sum
