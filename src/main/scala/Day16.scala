@@ -1,6 +1,7 @@
 import zio.*
 import zio.stream.*
 
+import scala.annotation.*
 import scala.util.chaining.scalaUtilChainingOps
 
 object Day16 extends ZIOAppDefault:
@@ -43,11 +44,23 @@ object Day16 extends ZIOAppDefault:
       remainigTime: Int,
       opened: Set[String] = Set.empty,
       accumReleased: Int = 0
-  )
+  ):
+    def below(max: Int): Boolean = ???
 
   case class MaxFlowFinder(scan: ScanOutput):
     def findMaxFlow(maxMinutes: Int): Int =
-      def loop(open: List[State], maxSoFar: Int = 0): Int = ???
+      @tailrec def loop(open: List[State], maxSoFar: Int = 0): Int =
+        open match
+          case Nil => maxSoFar
+          case current :: rest =>
+            val State(step, remaining, opened, accum) = current
+            if remaining == 0 || current.below(maxSoFar) then
+              loop(rest, maxSoFar)
+            else
+              step match
+                case Step.OpenValve(valve) => ???
+                case Step.GoTo(valve)      => ???
+
       loop(List(State(Step.GoTo(scan.startingValve), maxMinutes)))
 
   lazy val inputStream =
