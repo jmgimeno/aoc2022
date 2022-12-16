@@ -34,58 +34,21 @@ object Day16 extends ZIOAppDefault:
         case s"Valve $name has flow rate=$rate; tunnels lead to valves $output" =>
           Valve(name, rate.toInt, output.split(", ").toList)
 
+  enum Step:
+    case GoTo(valve: String)
+    case OpenValve(valve: String)
+
+  case class State(
+      step: Step,
+      remainigTime: Int,
+      opened: Set[String] = Set.empty,
+      accumReleased: Int = 0
+  )
+
   case class MaxFlowFinder(scan: ScanOutput):
     def findMaxFlow(maxMinutes: Int): Int =
-      case class State(
-          current: String,
-          minute: Int = 0,
-          flow: Int = 0,
-          opened: Set[String] = Set.empty,
-          path: List[String] = List.empty
-      ):
-        def nexts: List[State] =
-          scan
-            .output(current)
-            .map { nextValve =>
-              copy(
-                current = nextValve,
-                minute = minute + 1,
-                path = nextValve :: path
-              )
-            }
-            .filter { state =>
-              state.opened.size < scan.openableValves
-            }
-      end State
-
-      // calc result flow when no more valves can be opened
-      // calc maxflow atainable opening all remainnin valves
-      // purge if expected flo is lower than best to far
-      def loop(
-          fringe: Vector[State],
-          bestSoFar: Int
-      ): Int =
-        fringe match
-          case current +: rest =>
-            println(s"minute: ${current.minute} best $bestSoFar")
-            if current.minute > maxMinutes then bestSoFar
-            else
-              val State(name, minute, flow, opened, path) = current
-              val newFlow = flow + opened.map(scan.rate).sum
-              val newOpened =
-                if (scan.rate(name) != 0) then opened + name else opened
-              val nextBest = math.max(newFlow, bestSoFar)
-              val nexts = current
-                .copy(
-                  opened = newOpened,
-                  flow = newFlow
-                )
-                .nexts
-              loop(rest ++ nexts, nextBest)
-          case _ => assert(false, "havent't found")
-      loop(Vector(State(scan.startingValve)), 1)
-    end findMaxFlow
-  end MaxFlowFinder
+      def loop(open: List[State], maxSoFar: Int = 0): Int = ???
+      loop(List(State(Step.GoTo(scan.startingValve), maxMinutes)))
 
   lazy val inputStream =
     ZStream
