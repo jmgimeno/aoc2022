@@ -9,8 +9,13 @@ object Day16 extends ZIOAppDefault:
       startingValve: String,
       valves: Map[String, Valve]
   ):
-    def rate(valve: String): Int =
+    val openableValves = valves.values.count(_.rate != 0)
+    val maxFlow = valves.values.map(_.rate).sum
+
+    def rate(valve: String) =
       valves(valve).rate
+    def output(valve: String) =
+      valves(valve).output
 
   object ScanOutput:
     def apply(chunk: Chunk[Valve]): ScanOutput =
@@ -24,42 +29,56 @@ object Day16 extends ZIOAppDefault:
   object Valve:
     def parse(line: String) =
       line match
+        case s"Valve $name has flow rate=$rate; tunnel leads to valve $output" =>
+          Valve(name, rate.toInt, List(output))
         case s"Valve $name has flow rate=$rate; tunnels lead to valves $output" =>
           Valve(name, rate.toInt, output.split(", ").toList)
 
   case class MaxFlowFinder(scan: ScanOutput):
-    def findMaxFlow(maxMinutes: Int): Option[Int] =
+    def findMaxFlow(maxMinutes: Int): Int =
       case class State(
-          valve: String,
-          flow: Int,
-          minute: Int,
-          opened: Set[String]
+          current: String,
+          minute: Int = 0,
+          flow: Int = 0,
+          opened: Set[String] = Set.empty,
+          path: List[String] = List.empty
       ):
-        def isFinal = minute > maxMinutes
-        def enter =
-          copy(
-            flow =
-              if opened(valve) then flow
-              else flow + (maxMinutes - minute) * scan.rate(valve),
-            minute = minute + 1,
-            opened = opened + valve
-          )
-        def next = ???
-
+        def nexts: List[State] =
+          scan.output(current).map { nextValve =>
+            copy(
+              current = nextValve,
+              minute = minute + 1,
+              path = nextValve :: path
+            )
+          }
       end State
 
-      val initial = State(scan.startingValve, 0, 0, Set.empty)
-      val fringe = Vector(initial)
-
-      def loop(fringe: Vector[State], time: Int): Option[State] =
+      def loop(
+          fringe: Vector[State],
+          bestSoFar: Int
+      ): Int =
         fringe match
           case current +: rest =>
-            if current.isFinal then Some(current)
-            else ???
-          case _ => None
-
-      loop(fringe, 0).map(_.flow)
-
+            println(s"minute: ${current.minute} best $bestSoFar")
+            if current.minute > maxMinutes then bestSoFar
+            else
+              val State(name, minute, flow, opened, path) = current
+              // rethink !!!
+              if ??? then loop(rest, bestSoFar)
+              else
+                val newFlow = flow + opened.map(scan.rate).sum
+                val newOpened =
+                  if (scan.rate(name) != 0) then opened + name else opened
+                val nextBest = math.max(newFlow, bestSoFar)
+                val nexts = current
+                  .copy(
+                    opened = newOpened,
+                    flow = newFlow
+                  )
+                  .nexts
+                loop(rest ++ nexts, nextBest)
+          case _ => assert(false, "havent't found")
+      loop(Vector(State(scan.startingValve)), 1)
     end findMaxFlow
   end MaxFlowFinder
 
@@ -71,7 +90,7 @@ object Day16 extends ZIOAppDefault:
 
   def part1(is: UStream[String]): Task[Int] =
     for scan <- is.map(Valve.parse).runCollect.map(ScanOutput.apply)
-    yield MaxFlowFinder(scan).findMaxFlow(20).get
+    yield MaxFlowFinder(scan).findMaxFlow(20)
 
   def part2(is: UStream[String]): Task[Int] =
     ZIO.succeed(-1)

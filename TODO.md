@@ -31,3 +31,7 @@
 - intersection-trees for part1
 - in part1 sort ranges by x coord and then scan from left to right fusing
 - optimize via not building the whole set of candidates
+
+## Day 16
+
+- use a LazyList for the remaining of the search
