@@ -38,3 +38,10 @@
 - find a better bound for part2
   - to solve the puzzle I have used the `bestImprovement` for part1 but I feel it's not correct
   - the one I feel is correct makes the the search space too big
+
+## Day 17
+
+- Possible design:
+  - use bytes for the lines of each piece
+  - and a ListBuffer[Byte] for the screen
+  - and you'll have one byte free maybe to use in part2
