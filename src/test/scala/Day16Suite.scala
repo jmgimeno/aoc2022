@@ -30,8 +30,8 @@ object Day16Suite extends ZIOSpecDefault:
           assertZIO(part1(exampleStream))(equalTo(1651))
         },
         test("input.txt") {
-          assertZIO(part1(inputStream))(equalTo(0))
-        } @@ ignore
+          assertZIO(part1(inputStream))(equalTo(1737))
+        } @@ ignore // too slow
       ),
       suite("part2")(
         test("example") {

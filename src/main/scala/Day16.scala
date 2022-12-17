@@ -7,7 +7,6 @@ import scala.util.chaining.scalaUtilChainingOps
 object Day16 extends ZIOAppDefault:
 
   case class ScanOutput private (
-      startingValve: String,
       valves: Map[String, Valve]
   ):
     val openableValves = valves.values.count(_.rate != 0)
@@ -21,7 +20,6 @@ object Day16 extends ZIOAppDefault:
   object ScanOutput:
     def apply(chunk: Chunk[Valve]): ScanOutput =
       ScanOutput(
-        chunk(0).name,
         chunk.map(v => (v.name, v)).toMap
       )
 
@@ -59,10 +57,7 @@ object Day16 extends ZIOAppDefault:
     def releasing(scan: ScanOutput) =
       opened.map(scan.rate).sum
     def upperBound(scan: ScanOutput, maxTime: Int): Int =
-      // not very good bound but works on example
-      accum + (maxTime - time + 1) * scan.valves.values.map(_.rate).sum
-      // solves example but in input returns 2372 which id too hight!?
-      val current = accum + (maxTime - time + 1) * releasing(scan)
+      val current = accum + (maxTime - time) * releasing(scan)
       val closed = (scan.valves.keySet -- opened).map(scan.rate).toList.sortBy(v => -v)
       val times = time + 1 to maxTime by 2
       val bestFuture = closed.zip(times).map((r, t) => r * (maxTime - t)).sum
@@ -82,7 +77,7 @@ object Day16 extends ZIOAppDefault:
               val branches = current.branch(scan)
               val pruned = branches.filter(_.upperBound(scan, maxTime) > maxSoFar)
               loop(pruned ::: rest, maxSoFar)
-      loop(List(State(scan.startingValve, 0)))
+      loop(List(State("AA", 0)))
 
   lazy val inputStream =
     ZStream
