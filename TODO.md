@@ -36,3 +36,5 @@
 
 - unify code between parts 1 and 2
 - find a better bound for part2
+  - to solve the puzzle I have used the `bestImprovement` for part1 but I feel it's not correct
+  - the one I feel is correct makes the the search space too big

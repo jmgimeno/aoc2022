@@ -155,7 +155,7 @@ object Day16 extends ZIOAppDefault:
           accum + (maxTime - time) * releasing
         private val bestImprovement: Int =
           val closed = (scan.valves.keySet -- opened).map(scan.rate).toList.sortBy(v => -v)
-          val paired = closed.sliding(2, 2).map(_.sum) // I feel this gives a better bound
+          val paired = closed.sliding(2, 2).map(_.sum)
           val times = time + 1 to maxTime by 2
           closed.zip(times).map((r, t) => r * (maxTime - t)).sum
         val upperBound: Int =
