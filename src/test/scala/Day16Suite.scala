@@ -9,7 +9,7 @@ import Day16.*
 
 object Day16Suite extends ZIOSpecDefault:
 
-  lazy val example =
+  val example =
     """Valve AA has flow rate=0; tunnels lead to valves DD, II, BB
       |Valve BB has flow rate=13; tunnels lead to valves CC, AA
       |Valve CC has flow rate=2; tunnels lead to valves DD, BB
@@ -21,9 +21,9 @@ object Day16Suite extends ZIOSpecDefault:
       |Valve II has flow rate=0; tunnels lead to valves AA, JJ
       |Valve JJ has flow rate=21; tunnel leads to valve II""".stripMargin
 
-  lazy val exampleStream = ZStream.fromIterable(example.split("\n"))
+  val exampleStream = ZStream.fromIterable(example.split("\n"))
 
-  lazy val spec =
+  val spec =
     suite("day16")(
       suite("part1")(
         test("example") {
@@ -35,10 +35,10 @@ object Day16Suite extends ZIOSpecDefault:
       ),
       suite("part2")(
         test("example") {
-          assertZIO(part2(exampleStream))(equalTo(0))
-        } @@ ignore,
+          assertZIO(part2(exampleStream))(equalTo(1707))
+        },
         test("input.txt") {
-          assertZIO(part2(inputStream))(equalTo(0))
-        } @@ ignore
+          assertZIO(part2(inputStream))(equalTo(2216))
+        } @@ ignore // too slow
       )
     )

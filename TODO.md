@@ -34,4 +34,5 @@
 
 ## Day 16
 
-- use a LazyList for the remaining of the search
+- unify code between parts 1 and 2
+- find a better bound for part2
