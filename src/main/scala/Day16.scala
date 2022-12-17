@@ -87,7 +87,7 @@ object Day16 extends ZIOAppDefault:
             loop(math.max(lowerBoundOrSolution, maxSoFar))
           else
             val branches =
-              current.branch.filter(_.upperBound >= lowerBoundOrSolution)
+              current.branch.filter(_.upperBound > lowerBoundOrSolution)
             open.enqueue(branches*)
             loop(lowerBoundOrSolution)
       loop()
@@ -195,7 +195,7 @@ object Day16 extends ZIOAppDefault:
             loop(math.max(lowerBoundOrSolution, maxSoFar))
           else
             val branches =
-              current.branch.filter(_.upperBound >= lowerBoundOrSolution)
+              current.branch.filter(_.upperBound > lowerBoundOrSolution)
             open.enqueue(branches*)
             loop(lowerBoundOrSolution)
       loop()
