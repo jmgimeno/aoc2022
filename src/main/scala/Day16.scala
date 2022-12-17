@@ -3,6 +3,7 @@ import zio.stream.*
 
 import scala.annotation.*
 import scala.collection.mutable
+import scala.math.Ordering.String
 import scala.util.chaining.scalaUtilChainingOps
 
 object Day16 extends ZIOAppDefault:
@@ -43,7 +44,7 @@ object Day16 extends ZIOAppDefault:
           opened: Set[String] = Set.empty,
           accum: Int = 0
       ):
-        lazy val branch: List[State1] =
+        def branch: List[State1] =
           openValve ++ move
         private def openValve: List[State1] =
           if scan.rate(valve) > 0 && !opened(valve)
@@ -53,19 +54,19 @@ object Day16 extends ZIOAppDefault:
           scan.output(valve).map { next =>
             copy(valve = next, time = time + 1, accum = accum + releasing)
           }
-        private val releasing =
+        private def releasing =
           opened.map(scan.rate).sum
         val lowerBound: Int =
           accum + (maxTime - time) * releasing
-        private val bestImprovement: Int =
+        private def bestImprovement: Int =
           val closed = (scan.valves.keySet -- opened).map(scan.rate).toList.sortBy(v => -v)
           val times = time + 1 to maxTime by 2
           closed.zip(times).map((r, t) => r * (maxTime - t)).sum
         val upperBound: Int =
           lowerBound + bestImprovement
-        val allOpened: Boolean =
+        def allOpened: Boolean =
           opened.size == scan.openableValves
-        val isSolution: Boolean =
+        def isSolution: Boolean =
           time == maxTime
       end State1
 
@@ -97,72 +98,82 @@ object Day16 extends ZIOAppDefault:
     def findMaxFlow2(maxTime: Int): Int =
 
       case class State2(
-          me: String,
-          elephant: String,
+          valve1: String,
+          valve2: String,
           time: Int,
           opened: Set[String] = Set.empty,
           accum: Int = 0
       ):
-        lazy val branch: List[State2] =
-          bothOpenValves ++ meOpensValveAndElefantMoves ++ meMovesAndElephantOpensValve ++ bothMove
+        def branch =
+          bothOpen ++ oneOpensTwoMoves ++ twoOpensOneMove ++ bothMove
 
-        private def bothOpenValves: List[State2] =
-          if me != elephant && scan.rate(me) > 0 && !opened(me) && scan.rate(
-              elephant
-            ) > 0 && !opened(elephant)
+        private def bothOpen =
+          if valve1 != valve2
+            && scan.rate(valve1) > 0 && !opened(valve1)
+            && scan.rate(valve2) > 0 && !opened(valve2)
           then
-            List(copy(time = time + 1, opened = opened + me + elephant, accum = accum + releasing))
+            List(
+              copy(time = time + 1, opened = opened + valve1 + valve2, accum = accum + releasing)
+            )
           else List()
 
-        private def meOpensValveAndElefantMoves: List[State2] =
-          if scan.rate(me) > 0 && !opened(me) then
-            scan.output(elephant).map { nextElephant =>
+        private def oneOpensTwoMoves =
+          if scan.rate(valve1) > 0 && !opened(valve1) then
+            scan.output(valve2).map { nextValve2 =>
               copy(
-                elephant = nextElephant,
+                valve1 = String.min(valve1, nextValve2),
+                valve2 = String.max(valve1, nextValve2),
                 time = time + 1,
-                opened = opened + me,
+                opened = opened + valve1,
                 accum = accum + releasing
               )
             }
           else List()
 
-        private def meMovesAndElephantOpensValve: List[State2] =
-          if scan.rate(elephant) > 0 && !opened(elephant) then
-            scan.output(me).map { nextMe =>
+        private def twoOpensOneMove =
+          if scan.rate(valve2) > 0 && !opened(valve2) then
+            scan.output(valve1).map { nextValve1 =>
               copy(
-                me = nextMe,
+                valve1 = String.min(nextValve1, valve2),
+                valve2 = String.max(nextValve1, valve2),
                 time = time + 1,
-                opened = opened + elephant,
+                opened = opened + valve2,
                 accum = accum + releasing
               )
             }
           else List()
 
-        private def bothMove: List[State2] =
-          for
-            nextElephant <- scan.output(elephant)
-            nextMe <- scan.output(me)
-          yield copy(
-            me = nextMe,
-            elephant = nextElephant,
-            time = time + 1,
-            accum = accum + releasing
-          )
+        private def bothMove =
+          val pairs =
+            for
+              nextValve1 <- scan.output(valve1)
+              nextValve2 <- scan.output(valve2)
+              minValve = String.min(nextValve1, nextValve2)
+              maxValve = String.max(nextValve1, nextValve2)
+            yield (minValve, maxValve)
+          pairs.toSet.map { case (nextValve1, nextValve2) =>
+            copy(
+              valve1 = nextValve1,
+              valve2 = nextValve2,
+              time = time + 1,
+              accum = accum + releasing
+            )
+          }
 
-        private val releasing =
+        private def releasing =
           opened.map(scan.rate).sum
         val lowerBound: Int =
           accum + (maxTime - time) * releasing
-        private val bestImprovement: Int =
+        private def bestImprovement: Int =
           val closed = (scan.valves.keySet -- opened).map(scan.rate).toList.sortBy(v => -v)
-          val paired = closed.sliding(2, 2).map(_.sum)
+          val paired = closed.sliding(2, 2).map(_.sum) // Why this does not work?
           val times = time + 1 to maxTime by 2
           closed.zip(times).map((r, t) => r * (maxTime - t)).sum
         val upperBound: Int =
           lowerBound + bestImprovement
-        val allOpened: Boolean =
+        def allOpened: Boolean =
           opened.size == scan.openableValves
-        val isSolution: Boolean =
+        def isSolution: Boolean =
           time == maxTime
       end State2
 
@@ -205,4 +216,4 @@ object Day16 extends ZIOAppDefault:
     yield MaxFlowFinder2(scan).findMaxFlow2(26)
 
   lazy val run =
-    part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")
+    part1(inputStream).debug("PART1").zipPar(part2(inputStream).debug("PART2"))
