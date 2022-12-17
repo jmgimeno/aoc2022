@@ -2,6 +2,7 @@ import zio.*
 import zio.stream.*
 
 import scala.annotation.*
+import scala.collection.mutable
 import scala.util.chaining.scalaUtilChainingOps
 
 object Day16 extends ZIOAppDefault:
@@ -36,57 +37,62 @@ object Day16 extends ZIOAppDefault:
     case GoTo(valve: String)
     case OpenValve(valve: String)
 
-  case class State(
-      valve: String,
-      time: Int,
-      opened: Set[String] = Set.empty,
-      accum: Int = 0
-  ):
-    def branch(scan: ScanOutput): List[State] =
-      openValve(scan) ++ move(scan)
-
-    private def openValve(scan: ScanOutput): List[State] =
-      if scan.rate(valve) > 0 && !opened(valve)
-      then List(copy(time = time + 1, opened = opened + valve, accum = accum + releasing(scan)))
-      else List()
-    private def move(scan: ScanOutput): List[State] =
-      scan.output(valve).map { next =>
-        copy(valve = next, time = time + 1, accum = accum + releasing(scan))
-      }
-    def releasing(scan: ScanOutput) =
-      opened.map(scan.rate).sum
-    def lowerBound(scan: ScanOutput, maxTime: Int): Int =
-      accum + (maxTime - time) * releasing(scan)
-    private def bestImprovement(scan: ScanOutput, maxTime: Int): Int =
-      val closed = (scan.valves.keySet -- opened).map(scan.rate).toList.sortBy(v => -v)
-      val times = time + 1 to maxTime by 2
-      closed.zip(times).map((r, t) => r * (maxTime - t)).sum
-    def upperBound(scan: ScanOutput, maxTime: Int): Int =
-      lowerBound(scan, maxTime) + bestImprovement(scan, maxTime)
-    def allOpened(scan: ScanOutput): Boolean =
-      opened.size == scan.openableValves
-
   case class MaxFlowFinder(scan: ScanOutput):
 
     def findMaxFlow(maxTime: Int): Int =
 
+      case class State(
+          valve: String,
+          time: Int,
+          opened: Set[String] = Set.empty,
+          accum: Int = 0
+      ):
+        lazy val branch: List[State] =
+          openValve ++ move
+        private def openValve: List[State] =
+          if scan.rate(valve) > 0 && !opened(valve)
+          then List(copy(time = time + 1, opened = opened + valve, accum = accum + releasing))
+          else List()
+        private def move: List[State] =
+          scan.output(valve).map { next =>
+            copy(valve = next, time = time + 1, accum = accum + releasing)
+          }
+        private val releasing =
+          opened.map(scan.rate).sum
+        val lowerBound: Int =
+          accum + (maxTime - time) * releasing
+        private val bestImprovement: Int =
+          val closed = (scan.valves.keySet -- opened).map(scan.rate).toList.sortBy(v => -v)
+          val times = time + 1 to maxTime by 2
+          closed.zip(times).map((r, t) => r * (maxTime - t)).sum
+        val upperBound: Int =
+          lowerBound + bestImprovement
+        val allOpened: Boolean =
+          opened.size == scan.openableValves
+      end State
+
+      given Ordering[State] with
+        def compare(left: State, right: State) =
+          left.upperBound.compare(right.upperBound)
+
+      val open = mutable.PriorityQueue(State("AA", 0))
+
       @tailrec def loop(
-          open: List[State],
-          maxBound: Int = Integer.MIN_VALUE,
           maxSoFar: Int = Integer.MIN_VALUE
       ): Int =
-        open match
-          case Nil => maxSoFar
-          case current :: rest =>
-            val State(valve, time, opened, accum) = current
-            val currentBound = math.max(current.lowerBound(scan, maxTime), maxBound)
-            if time == maxTime || current.allOpened(scan) then
-              loop(rest, currentBound, math.max(currentBound, maxSoFar))
-            else
-              val branches =
-                current.branch(scan).filter(_.upperBound(scan, maxTime) >= currentBound)
-              loop(branches ::: rest, currentBound, maxSoFar)
-      loop(List(State("AA", 0)))
+        if open.isEmpty then maxSoFar
+        else
+          val current = open.dequeue()
+          val State(valve, time, opened, _) = current
+          val lowerBoundOrSolution = math.max(current.lowerBound, maxSoFar)
+          if time == maxTime || current.allOpened then
+            loop(math.max(lowerBoundOrSolution, maxSoFar))
+          else
+            val branches =
+              current.branch.filter(_.upperBound >= lowerBoundOrSolution)
+            open.enqueue(branches*)
+            loop(lowerBoundOrSolution)
+      loop()
 
   lazy val inputStream =
     ZStream
