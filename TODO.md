@@ -38,3 +38,4 @@
 - find a better bound for part2
   - to solve the puzzle I have used the `bestImprovement` for part1 but I feel it's not correct
   - the one I feel is correct makes the the search space too big
+- exploit symmetries (not generate states where the only difference is the room between me and the elefant: impose me <= elephant)
