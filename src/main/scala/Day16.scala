@@ -10,7 +10,6 @@ object Day16 extends ZIOAppDefault:
       valves: Map[String, Valve]
   ):
     val openableValves = valves.values.count(_.rate != 0)
-    val maxFlow = valves.values.map(_.rate).sum
 
     def rate(valve: String) =
       valves(valve).rate
@@ -56,27 +55,37 @@ object Day16 extends ZIOAppDefault:
       }
     def releasing(scan: ScanOutput) =
       opened.map(scan.rate).sum
-    def upperBound(scan: ScanOutput, maxTime: Int): Int =
-      val current = accum + (maxTime - time) * releasing(scan)
+    def lowerBound(scan: ScanOutput, maxTime: Int): Int =
+      accum + (maxTime - time) * releasing(scan)
+    private def bestImprovement(scan: ScanOutput, maxTime: Int): Int =
       val closed = (scan.valves.keySet -- opened).map(scan.rate).toList.sortBy(v => -v)
       val times = time + 1 to maxTime by 2
-      val bestFuture = closed.zip(times).map((r, t) => r * (maxTime - t)).sum
-      current + bestFuture
+      closed.zip(times).map((r, t) => r * (maxTime - t)).sum
+    def upperBound(scan: ScanOutput, maxTime: Int): Int =
+      lowerBound(scan, maxTime) + bestImprovement(scan, maxTime)
+    def allOpened(scan: ScanOutput): Boolean =
+      opened.size == scan.openableValves
 
   case class MaxFlowFinder(scan: ScanOutput):
 
     def findMaxFlow(maxTime: Int): Int =
 
-      @tailrec def loop(open: List[State], maxSoFar: Int = 0): Int =
+      @tailrec def loop(
+          open: List[State],
+          maxBound: Int = Integer.MIN_VALUE,
+          maxSoFar: Int = Integer.MIN_VALUE
+      ): Int =
         open match
           case Nil => maxSoFar
           case current :: rest =>
             val State(valve, time, opened, accum) = current
-            if time == maxTime then loop(rest, math.max(accum, maxSoFar))
+            val currentBound = math.max(current.lowerBound(scan, maxTime), maxBound)
+            if time == maxTime || current.allOpened(scan) then
+              loop(rest, currentBound, math.max(currentBound, maxSoFar))
             else
-              val branches = current.branch(scan)
-              val pruned = branches.filter(_.upperBound(scan, maxTime) > maxSoFar)
-              loop(pruned ::: rest, maxSoFar)
+              val branches =
+                current.branch(scan).filter(_.upperBound(scan, maxTime) >= currentBound)
+              loop(branches ::: rest, currentBound, maxSoFar)
       loop(List(State("AA", 0)))
 
   lazy val inputStream =
