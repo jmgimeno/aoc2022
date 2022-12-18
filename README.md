@@ -22,3 +22,4 @@
 - Day 15: Beacon Exclusion Zone
 - Day 16: Proboscidea Volcanium
 - Day 17: Pyroclastic Flow
+- Day 18: Boiling Boulders
