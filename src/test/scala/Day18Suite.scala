@@ -30,11 +30,11 @@ object Day18Suite extends ZIOSpecDefault:
     suite("day18")(
       suite("part1")(
         test("example") {
-          assertZIO(part1(exampleStream))(equalTo(0))
-        } @@ ignore,
+          assertZIO(part1(exampleStream))(equalTo(64))
+        },
         test("input.txt") {
-          assertZIO(part1(inputStream))(equalTo(0))
-        } @@ ignore
+          assertZIO(part1(inputStream))(equalTo(3542))
+        }
       ),
       suite("part2")(
         test("example") {
