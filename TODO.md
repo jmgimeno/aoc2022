@@ -45,3 +45,8 @@
   - use bytes for the lines of each piece
   - and a ListBuffer[Byte] for the screen
   - and you'll have one byte free maybe to use in part2
+
+## Day 18
+
+- transform flooding to iterative to avoid stack overflow
+- use <https://www.geeksforgeeks.org/how-to-check-if-a-given-point-lies-inside-a-polygon/> in 3D
