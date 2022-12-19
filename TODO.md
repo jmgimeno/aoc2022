@@ -48,5 +48,5 @@
 
 ## Day 18
 
-- transform flooding to iterative to avoid stack overflow
 - use <https://www.geeksforgeeks.org/how-to-check-if-a-given-point-lies-inside-a-polygon/> in 3D
+- the code needs lots of love & polish

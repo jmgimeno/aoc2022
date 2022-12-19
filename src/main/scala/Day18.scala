@@ -59,38 +59,38 @@ object Day18 extends ZIOAppDefault:
 
     def surfaceAreaWithoutPockets: Int =
 
-      def reachableIfMakesSense(outside: mutable.Set[Cube])(c: Cube): Unit =
-        if !(c.x < minX - 1 || c.y < minY - 1 || c.z < minZ - 1
-            || c.x > maxX + 1 || c.y > maxY + 1 || c.z > maxZ + 1
-            || cubes(c))
-        then reachable(outside)(c)
-
-      def reachable(outside: mutable.Set[Cube])(c: Cube): Unit =
-        if !cubes(c) && !outside(c) then
-          outside += c
-          reachableIfMakesSense(outside)(c.copy(x = c.x - 1))
-          reachableIfMakesSense(outside)(c.copy(x = c.x + 1))
-          reachableIfMakesSense(outside)(c.copy(y = c.y - 1))
-          reachableIfMakesSense(outside)(c.copy(y = c.y + 1))
-          reachableIfMakesSense(outside)(c.copy(z = c.z - 1))
-          reachableIfMakesSense(outside)(c.copy(z = c.z + 1))
-
-      def calculateSurfaceArea(cubes: Set[Cube]) =
-        cubes.foldLeft(AreaCounter.make)(_ addCube _).surfaceArea
-
-      val outside = mutable.Set[Cube]()
-      val initial = Cube(minX - 1, minY - 1, minZ - 1)
-      reachable(outside)(initial)
-      val pockets =
-        for
+      def unreachable: Set[Cube] =
+        val outside = mutable.Set[Cube]()
+        val fringe = mutable.Queue[Cube](Cube(minX - 1, minY - 1, minZ - 1))
+        while !fringe.isEmpty do
+          val current = fringe.dequeue()
+          if !cubes(current) && !outside(current) then
+            outside += current
+            addIfMakesSense(fringe)(current.copy(x = current.x - 1))
+            addIfMakesSense(fringe)(current.copy(x = current.x + 1))
+            addIfMakesSense(fringe)(current.copy(y = current.y - 1))
+            addIfMakesSense(fringe)(current.copy(y = current.y + 1))
+            addIfMakesSense(fringe)(current.copy(z = current.z - 1))
+            addIfMakesSense(fringe)(current.copy(z = current.z + 1))
+        val unreachable = for
           x <- minX to maxX
           y <- minX to maxY
           z <- minX to maxZ
           c = Cube(x, y, z)
           if !cubes(c) && !outside(c)
         yield c
+        unreachable.toSet
 
-      calculateSurfaceArea(cubes) - calculateSurfaceArea(pockets.toSet)
+      def addIfMakesSense(q: mutable.Queue[Cube])(c: Cube): Unit =
+        if !(c.x < minX - 1 || c.y < minY - 1 || c.z < minZ - 1
+            || c.x > maxX + 1 || c.y > maxY + 1 || c.z > maxZ + 1
+            || cubes(c))
+        then q.enqueue(c)
+
+      def calculateSurfaceArea(cubes: Set[Cube]) =
+        cubes.foldLeft(AreaCounter.make)(_ addCube _).surfaceArea
+
+      calculateSurfaceArea(cubes) - calculateSurfaceArea(unreachable)
 
   def part1(is: UStream[String]): Task[Int] =
     for areaCounter <- is
