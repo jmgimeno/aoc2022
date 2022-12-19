@@ -12,30 +12,13 @@ object Day19 extends ZIOAppDefault:
   enum Resource:
     case Ore, Clay, Obsidian, Geode
 
-  case class Robot(makes: Resource, costs: Map[Resource, Int]):
-    def cost(r: Resource) = costs.getOrElse(r, 0)
+  case class Robot(makes: Resource, costs: Map[Resource, Int])
 
-  enum RobotSpec:
-    case Ore(ore: Int)
-    case Clay(ore: Int)
-    case Obsidian(ore: Int, clay: Int)
-    case Geode(ore: Int, obsidian: Int)
-
-    def makeRobot: Robot = this match
-      case Ore(ore) =>
-        Robot(Resource.Ore, Map(Resource.Ore -> ore))
-      case Clay(ore) =>
-        Robot(Resource.Clay, Map(Resource.Ore -> ore))
-      case Obsidian(ore, clay) =>
-        Robot(Resource.Obsidian, Map(Resource.Ore -> ore, Resource.Clay -> clay))
-      case Geode(ore, obsidian) =>
-        Robot(Resource.Geode, Map(Resource.Ore -> ore, Resource.Obsidian -> obsidian))
-
-  case class Blueprint(id: Int, specifications: Map[Resource, RobotSpec]):
-    def makeRobot(resource: Resource) = specifications(resource).makeRobot
+  case class Blueprint(id: Int, specifications: Map[Resource, Robot]):
+    def cost(r: Resource) = specifications(r).costs.getOrElse(r, 0)
 
   object Blueprint:
-    import RobotSpec.*
+    import Resource.*
     def parse(line: String): Blueprint =
       val patternNum = raw"Blueprint (\d+):".r
       val patternOre = raw"Each ore robot costs (\d+) ore.".r
@@ -48,16 +31,19 @@ object Day19 extends ZIOAppDefault:
       val costObsidianRobotOre = patternObsidian.findFirstMatchIn(line).get.group(1).toInt
       val costObsidianRobotClay = patternObsidian.findFirstMatchIn(line).get.group(2).toInt
       val costGeodeRobotOre = patternGeode.findFirstMatchIn(line).get.group(1).toInt
-      val costGeodeRobotClay = patternGeode.findFirstMatchIn(line).get.group(2).toInt
+      val costGeodeRobotObsidian = patternGeode.findFirstMatchIn(line).get.group(2).toInt
       Blueprint(
         num,
         Map(
-          Resource.Ore -> Ore(costOreRobot),
-          Resource.Clay -> Clay(costClayRobot),
-          Resource.Obsidian -> Obsidian(costObsidianRobotOre, costObsidianRobotClay),
-          Resource.Geode -> Geode(costGeodeRobotOre, costGeodeRobotClay)
+          Ore -> Robot(Ore, Map(Ore -> costOreRobot)),
+          Clay -> Robot(Clay, Map(Ore -> costClayRobot)),
+          Obsidian -> Robot(
+            Obsidian,
+            Map(Ore -> costObsidianRobotOre, Clay -> costObsidianRobotClay)
+          ),
+          Geode -> Robot(Geode, Map(Ore -> costGeodeRobotOre, Obsidian -> costGeodeRobotObsidian))
         )
-      ).tap(println)
+      )
 
   case class State(
       time: Int,
@@ -65,12 +51,37 @@ object Day19 extends ZIOAppDefault:
       robots: Map[Resource, Int],
       resources: Map[Resource, Int]
   ):
-    def next: List[State] = ???
+    def canCreateRobotFor(r: Resource) =
+      blueprint.cost(r) <= resources(r)
+
+    def noCreation =
+      copy(
+        time = time + 1,
+        resources = resources.map((r, qty) => r -> (qty + robots(r)))
+      )
+
+    def createOneRobot =
+      Resource.values
+        .filter(canCreateRobotFor)
+        .map(newRobotFor =>
+          copy(
+            time = time + 1,
+            resources =
+              resources.map((r, qty) => r -> (qty + robots(r) - blueprint.cost(newRobotFor))),
+            robots = robots.updated(newRobotFor, robots(newRobotFor) + 1)
+          )
+        )
+        .toList
+
+    def next: List[State] = noCreation :: createOneRobot
 
   object State:
-    given Ordering[State] with
-      def compare(left: State, right: State) =
-        left.resources(Resource.Geode).compare(right.resources(Resource.Geode))
+    given Ordering[State] =
+      Ordering
+        .by[State, Int](_.resources(Resource.Geode))
+        .orElseBy(_.resources(Resource.Obsidian))
+        .orElseBy(_.resources(Resource.Clay))
+        .orElseBy(_.resources(Resource.Ore))
 
   class Simulation(blueprint: Blueprint, maxTime: Int):
     def qualityLevel: Int = blueprint.id * maxGeodes
