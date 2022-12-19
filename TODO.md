@@ -55,4 +55,6 @@
 
 - use A* or BB or any other algorithm (my first approximation) I think it is not the way to go
 - think of something else: e.g. maximize a cost funcion under linear (maybe they are) restrictions
+  - <https://github.com/vagmcs/Optimus>
+  - <https://coin-or.github.io/pulp/CaseStudies/a_two_stage_production_planning_problem.html>
 - back to the design table
