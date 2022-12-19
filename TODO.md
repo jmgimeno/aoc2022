@@ -50,3 +50,9 @@
 
 - use <https://www.geeksforgeeks.org/how-to-check-if-a-given-point-lies-inside-a-polygon/> in 3D
 - the code needs lots of love & polish
+
+## Day 19
+
+- use A* or BB or any other algorithm (my first approximation) I think it is not the way to go
+- think of something else: e.g. maximize a cost funcion under linear (maybe they are) restrictions
+- back to the design table

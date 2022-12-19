@@ -51,8 +51,8 @@ object Day19 extends ZIOAppDefault:
       robots: Map[Resource, Int],
       resources: Map[Resource, Int]
   ):
-    def canCreateRobotFor(r: Resource) =
-      blueprint.specifications(r).costs.forall((cr, c) => resources(cr) >= c)
+    def canCreateRobotFor(resource: Resource) =
+      Resource.values.forall(r => blueprint.cost(resource)(r) <= resources(r))
 
     def noCreation =
       copy(
@@ -78,10 +78,10 @@ object Day19 extends ZIOAppDefault:
   object State:
     given Ordering[State] =
       Ordering
-        .by[State, Int](_.resources(Resource.Geode))
-        .orElseBy(_.resources(Resource.Obsidian))
-        .orElseBy(_.resources(Resource.Clay))
-        .orElseBy(_.resources(Resource.Ore))
+        .by[State, Int](s => s.resources(Resource.Geode) + s.robots(Resource.Geode))
+        .orElseBy[Int](s => s.resources(Resource.Obsidian) + s.robots(Resource.Obsidian))
+        .orElseBy[Int](s => s.resources(Resource.Clay) + s.robots(Resource.Clay))
+        .orElseBy[Int](s => s.resources(Resource.Ore) + s.robots(Resource.Ore))
 
   class Simulation(blueprint: Blueprint, maxTime: Int):
     def qualityLevel: Int = blueprint.id * maxGeodes
@@ -93,11 +93,16 @@ object Day19 extends ZIOAppDefault:
       val fringe = mutable.PriorityQueue(initial)
       while !fringe.isEmpty do
         val current = fringe.dequeue()
+        println(s"time      = ${current.time}")
+        println(s"robots    = ${current.robots}")
+        println(s"resources = ${current.resources}")
+        println("_" * 10)
         if current.time == maxTime
         then
           if current > best then best = current
         else fringe.enqueue(current.next*)
 
+      println(s"best = ${best.resources}")
       best.resources(Resource.Geode)
 
   lazy val inputStream =
@@ -107,7 +112,7 @@ object Day19 extends ZIOAppDefault:
       .orDie
 
   def part1(is: UStream[String]): Task[Int] =
-    is.map(Blueprint.parse).map(Simulation(_, 24).qualityLevel).runSum.map(_.toInt)
+    is.map(Blueprint.parse).map(Simulation(_, 28).qualityLevel).runSum.map(_.toInt)
 
   def part2(is: UStream[String]): Task[Int] =
     ZIO.succeed(-1)
