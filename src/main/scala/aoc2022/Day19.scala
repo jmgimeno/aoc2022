@@ -15,7 +15,7 @@ object Day19 extends ZIOAppDefault:
   case class Robot(makes: Resource, costs: Map[Resource, Int])
 
   case class Blueprint(id: Int, specifications: Map[Resource, Robot]):
-    def cost(r: Resource) = specifications(r).costs.getOrElse(r, 0)
+    def cost(robotFor: Resource)(r: Resource) = specifications(robotFor).costs.getOrElse(r, 0)
 
   object Blueprint:
     import Resource.*
@@ -52,7 +52,7 @@ object Day19 extends ZIOAppDefault:
       resources: Map[Resource, Int]
   ):
     def canCreateRobotFor(r: Resource) =
-      blueprint.cost(r) <= resources(r)
+      blueprint.specifications(r).costs.forall((cr, c) => resources(cr) >= c)
 
     def noCreation =
       copy(
@@ -67,7 +67,7 @@ object Day19 extends ZIOAppDefault:
           copy(
             time = time + 1,
             resources =
-              resources.map((r, qty) => r -> (qty + robots(r) - blueprint.cost(newRobotFor))),
+              resources.map((r, qty) => r -> (qty + robots(r) - blueprint.cost(newRobotFor)(r))),
             robots = robots.updated(newRobotFor, robots(newRobotFor) + 1)
           )
         )
