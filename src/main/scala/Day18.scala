@@ -57,25 +57,40 @@ object Day18 extends ZIOAppDefault:
     val maxZ = cubes.maxBy(_.z).z
     val total = (maxX - minX + 3) * (maxY - minY + 3) * (maxZ - minZ + 3)
 
-    def unreachable: Int =
+    def surfaceAreaWithoutPockets: Int =
 
-      val initial = Cube(minX - 1, minY - 1, minZ - 1)
-      val outside = mutable.Set[Cube]()
+      def reachableIfMakesSense(outside: mutable.Set[Cube])(c: Cube): Unit =
+        if !(c.x < minX - 1 || c.y < minY - 1 || c.z < minZ - 1
+            || c.x > maxX + 1 || c.y > maxY + 1 || c.z > maxZ + 1
+            || cubes(c))
+        then reachable(outside)(c)
 
-      def unreachable(c: Cube): Unit =
-        if cubes(c) then return
-        else if outside(c) then return
-        else
+      def reachable(outside: mutable.Set[Cube])(c: Cube): Unit =
+        if !cubes(c) && !outside(c) then
           outside += c
-          if minX <= c.x then unreachable(c.copy(x = c.x - 1))
-          if c.x <= maxX then unreachable(c.copy(x = c.x + 1))
-          if minY <= c.y then unreachable(c.copy(y = c.y - 1))
-          if c.y <= maxY then unreachable(c.copy(y = c.y + 1))
-          if minZ <= c.z then unreachable(c.copy(z = c.z - 1))
-          if c.z <= maxZ then unreachable(c.copy(z = c.z + 1))
+          reachableIfMakesSense(outside)(c.copy(x = c.x - 1))
+          reachableIfMakesSense(outside)(c.copy(x = c.x + 1))
+          reachableIfMakesSense(outside)(c.copy(y = c.y - 1))
+          reachableIfMakesSense(outside)(c.copy(y = c.y + 1))
+          reachableIfMakesSense(outside)(c.copy(z = c.z - 1))
+          reachableIfMakesSense(outside)(c.copy(z = c.z + 1))
 
-      unreachable(initial)
-      total - outside.size - cubes.size
+      def calculateSurfaceArea(cubes: Set[Cube]) =
+        cubes.foldLeft(AreaCounter.make)(_ addCube _).surfaceArea
+
+      val outside = mutable.Set[Cube]()
+      val initial = Cube(minX - 1, minY - 1, minZ - 1)
+      reachable(outside)(initial)
+      val pockets =
+        for
+          x <- minX to maxX
+          y <- minX to maxY
+          z <- minX to maxZ
+          c = Cube(x, y, z)
+          if !cubes(c) && !outside(c)
+        yield c
+
+      calculateSurfaceArea(cubes) - calculateSurfaceArea(pockets.toSet)
 
   def part1(is: UStream[String]): Task[Int] =
     for areaCounter <- is
@@ -88,7 +103,7 @@ object Day18 extends ZIOAppDefault:
       .runCollect
       .map(_.toSet)
       .map(UnreachableCounter.apply)
-      .map(_.unreachable)
+      .map(_.surfaceAreaWithoutPockets)
 
   lazy val run =
     part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")
