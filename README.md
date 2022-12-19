@@ -2,6 +2,7 @@
 
 - Scala 3
 - ZIO 2
+- No AI assistant
 
 ## Challenges
 
@@ -23,3 +24,4 @@
 - Day 16: Proboscidea Volcanium
 - Day 17: Pyroclastic Flow
 - Day 18: Boiling Boulders
+- Day 19: Not Enough Minerals
