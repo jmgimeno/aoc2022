@@ -13,7 +13,7 @@ object Day21 extends ZIOAppDefault:
     case Op(
         left: String,
         right: String,
-        op: (Long, Long) => Long,
+        eval: (Long, Long) => Long,
         invL: (Long, Long) => Long,
         invR: (Long, Long) => Long
     )
@@ -43,11 +43,11 @@ object Day21 extends ZIOAppDefault:
               else
                 jobs(head) match
                   case Job.Num(num) => loop(next, environment.updated(head, num))
-                  case Job.Op(left, right, op, _, _) =>
+                  case Job.Op(left, right, eval, _, _) =>
                     if environment.contains(left) && environment.contains(right) then
                       loop(
                         next,
-                        environment.updated(head, op(environment(left), environment(right)))
+                        environment.updated(head, eval(environment(left), environment(right)))
                       )
                     else loop(left :: right :: stack, environment)
 
@@ -81,7 +81,7 @@ object Day21 extends ZIOAppDefault:
             jobs(head) match
               case Job.Num(n) =>
                 loop(next, target)
-              case Job.Op(left, right, op, invL, invR) =>
+              case Job.Op(left, right, eval, invL, invR) =>
                 if monkeys(left)(human) then loop(left :: next, invL(target, evaluator.yell(right)))
                 else loop(right :: next, invR(target, evaluator.yell(left)))
           case Nil => assert(false, "should't happen")

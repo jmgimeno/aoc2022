@@ -66,3 +66,7 @@
   - index: position of num(i) in mixed // to know where each number is
   - inv:   to know the positions in index with a given value
 - permutation group?
+
+## Day 21
+
+- find another way to define the domain (traits, normal classes & extractors)
