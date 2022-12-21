@@ -10,18 +10,25 @@ object Day21 extends ZIOAppDefault:
 
   enum Job:
     case Num(n: Long)
-    case Sum(left: String, right: String)
-    case Dif(left: String, right: String)
-    case Mul(left: String, right: String)
-    case Div(left: String, right: String)
+    case Op(
+        left: String,
+        right: String,
+        op: (Long, Long) => Long,
+        invL: (Long, Long) => Long,
+        invR: (Long, Long) => Long
+    )
 
   object Job:
     def parse(line: String): (String, Job) = line match
-      case s"$monkey: $left + $right" => (monkey, Sum(left, right))
-      case s"$monkey: $left - $right" => (monkey, Dif(left, right))
-      case s"$monkey: $left * $right" => (monkey, Mul(left, right))
-      case s"$monkey: $left / $right" => (monkey, Div(left, right))
-      case s"$monkey: $num"           => (monkey, Num(num.toLong))
+      case s"$monkey: $left + $right" =>
+        (monkey, Op(left, right, _ + _, (t, r) => t - r, (t, l) => t - l))
+      case s"$monkey: $left - $right" =>
+        (monkey, Op(left, right, _ - _, (t, r) => t + r, (t, l) => l - t))
+      case s"$monkey: $left * $right" =>
+        (monkey, Op(left, right, _ * _, (t, r) => t / r, (t, l) => t / l))
+      case s"$monkey: $left / $right" =>
+        (monkey, Op(left, right, _ / _, (t, r) => t * r, (t, l) => l / t))
+      case s"$monkey: $num" => (monkey, Num(num.toLong))
 
   class Evaluator(jobs: Map[String, Job]):
     def yell(monkey: String): Long =
@@ -36,22 +43,14 @@ object Day21 extends ZIOAppDefault:
               else
                 jobs(head) match
                   case Job.Num(num) => loop(next, environment.updated(head, num))
-                  case Job.Sum(left, right) =>
+                  case Job.Op(left, right, op, _, _) =>
                     if environment.contains(left) && environment.contains(right) then
-                      loop(next, environment.updated(head, environment(left) + environment(right)))
+                      loop(
+                        next,
+                        environment.updated(head, op(environment(left), environment(right)))
+                      )
                     else loop(left :: right :: stack, environment)
-                  case Job.Dif(left, right) =>
-                    if environment.contains(left) && environment.contains(right) then
-                      loop(next, environment.updated(head, environment(left) - environment(right)))
-                    else loop(left :: right :: stack, environment)
-                  case Job.Mul(left, right) =>
-                    if environment.contains(left) && environment.contains(right) then
-                      loop(next, environment.updated(head, environment(left) * environment(right)))
-                    else loop(left :: right :: stack, environment)
-                  case Job.Div(left, right) =>
-                    if environment.contains(left) && environment.contains(right) then
-                      loop(next, environment.updated(head, environment(left) / environment(right)))
-                    else loop(left :: right :: stack, environment)
+
             case Nil => assert(false, "should never happen")
       loop(stack, environment)
 
@@ -60,14 +59,11 @@ object Day21 extends ZIOAppDefault:
       if found.contains(start) then found
       else
         jobs(start) match
-          case Job.Num(n)           => found + start
-          case Job.Sum(left, right) => monkeys(left, monkeys(right, found + start))
-          case Job.Dif(left, right) => monkeys(left, monkeys(right, found + start))
-          case Job.Mul(left, right) => monkeys(left, monkeys(right, found + start))
-          case Job.Div(left, right) => monkeys(left, monkeys(right, found + start))
+          case Job.Num(n)                   => found + start
+          case Job.Op(left, right, _, _, _) => monkeys(left, monkeys(right, found + start))
 
     def solve(root: String, human: String): Long =
-      val Job.Sum(left, right) = jobs(root).asInstanceOf[Job.Sum] // FIXME!!
+      val Job.Op(left, right, _, _, _) = jobs(root).asInstanceOf[Job.Op] // FIXME!!
       assert(monkeys(left)(human) && !monkeys(right)(human))
       val evaluator = Evaluator(jobs)
       val rightValue = evaluator.yell(right)
@@ -85,20 +81,10 @@ object Day21 extends ZIOAppDefault:
             jobs(head) match
               case Job.Num(n) =>
                 loop(next, target)
-              case Job.Sum(left, right) =>
-                if monkeys(left)(human) then loop(left :: next, target - evaluator.yell(right))
-                else loop(right :: next, target - evaluator.yell(left))
-              case Job.Dif(left, right) =>
-                if monkeys(left)(human) then loop(left :: next, target + evaluator.yell(right))
-                else loop(right :: next, evaluator.yell(left) - target)
-              case Job.Mul(left, right) =>
-                if monkeys(left)(human) then loop(left :: next, target / evaluator.yell(right))
-                else loop(right :: next, target / evaluator.yell(left))
-              case Job.Div(left, right) =>
-                if monkeys(left)(human) then loop(left :: next, target * evaluator.yell(right))
-                else loop(right :: next, evaluator.yell(left) / target)
+              case Job.Op(left, right, op, invL, invR) =>
+                if monkeys(left)(human) then loop(left :: next, invL(target, evaluator.yell(right)))
+                else loop(right :: next, invR(target, evaluator.yell(left)))
           case Nil => assert(false, "should't happen")
-
       loop(stack, target)
 
   lazy val inputStream =
