@@ -70,3 +70,4 @@
 ## Day 21
 
 - find another way to define the domain (traits, normal classes & extractors)
+- unify evaluation and search for 'human' (e.g. returning an Option)
