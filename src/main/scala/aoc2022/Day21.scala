@@ -4,6 +4,7 @@ import zio.*
 import zio.stream.*
 
 import scala.util.chaining.scalaUtilChainingOps
+import scala.annotation.tailrec
 
 object Day21 extends ZIOAppDefault:
 
@@ -26,7 +27,7 @@ object Day21 extends ZIOAppDefault:
     def yell(monkey: String): Long =
       val environment = jobs.collect { case (monkey, Job.Num(num)) => (monkey, num) }.toMap
       val stack = List(monkey)
-      def loop(stack: List[String], environment: Map[String, Long]): Long =
+      @tailrec def loop(stack: List[String], environment: Map[String, Long]): Long =
         if environment.contains(monkey) then environment(monkey)
         else
           stack match
@@ -54,6 +55,31 @@ object Day21 extends ZIOAppDefault:
             case Nil => assert(false, "should never happen")
       loop(stack, environment)
 
+  class Solver(jobs: Map[String, Job]):
+    def monkeys(start: String, found: Set[String] = Set.empty): Set[String] =
+      if found.contains(start) then found
+      else
+        jobs(start) match
+          case Job.Num(n)           => found + start
+          case Job.Sum(left, right) => monkeys(left, monkeys(right, found + start))
+          case Job.Dif(left, right) => monkeys(left, monkeys(right, found + start))
+          case Job.Mul(left, right) => monkeys(left, monkeys(right, found + start))
+          case Job.Div(left, right) => monkeys(left, monkeys(right, found + start))
+
+    def solve(root: String, human: String): Long =
+      val Job.Sum(left, right) = jobs(root).asInstanceOf[Job.Sum] // FIXME!!
+      assert(monkeys(left)(human) && !monkeys(right)(human))
+      val rightValue = Evaluator(jobs).yell(right)
+      solveFor(human, left, rightValue)
+
+    def solveFor(human: String, root: String, target: Long): Long =
+      val environment = jobs.collect {
+        case (monkey, Job.Num(num)) if monkey != human => (monkey, num)
+      }.toMap
+      val stack = List(root)
+      def loop(stack: List[String], environment: Map[String, Long], target: Long): Int = ???
+      loop(stack, environment, target)
+
   lazy val inputStream =
     ZStream
       .fromFileName("data/input21.txt")
@@ -65,7 +91,8 @@ object Day21 extends ZIOAppDefault:
     yield Evaluator(parsedLines).yell("root")
 
   def part2(is: UStream[String]): Task[Long] =
-    ZIO.succeed(-1)
+    for parsedLines <- is.map(Job.parse).runCollect.map(_.toMap)
+    yield Solver(parsedLines).solve("root", "humn")
 
   lazy val run =
     part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")
