@@ -41,8 +41,6 @@ However, your actual situation involves considerably more monkeys. What number w
 
 Your puzzle answer was 158731561459602.
 
-The first half of this puzzle is complete! It provides one gold star: *
-
 --- Part Two ---
 Due to some kind of monkey-elephant-human mistranslation, you seem to have misunderstood a few key details about the riddle.
 
@@ -53,3 +51,5 @@ Second, you got the wrong monkey for the job starting with humn:. It isn't a mon
 In the above example, the number you need to yell to pass root's equality test is 301. (This causes root to get the same number, 150, from both of its monkeys.)
 
 What number do you yell to pass root's equality test?
+
+Your puzzle answer was 3769668716709.

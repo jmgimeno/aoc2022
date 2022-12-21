@@ -69,16 +69,37 @@ object Day21 extends ZIOAppDefault:
     def solve(root: String, human: String): Long =
       val Job.Sum(left, right) = jobs(root).asInstanceOf[Job.Sum] // FIXME!!
       assert(monkeys(left)(human) && !monkeys(right)(human))
-      val rightValue = Evaluator(jobs).yell(right)
-      solveFor(human, left, rightValue)
+      val evaluator = Evaluator(jobs)
+      val rightValue = evaluator.yell(right)
+      solveFor(human, left, rightValue, evaluator)
 
-    def solveFor(human: String, root: String, target: Long): Long =
+    def solveFor(human: String, root: String, target: Long, evaluator: Evaluator): Long =
       val environment = jobs.collect {
         case (monkey, Job.Num(num)) if monkey != human => (monkey, num)
       }.toMap
       val stack = List(root)
-      def loop(stack: List[String], environment: Map[String, Long], target: Long): Int = ???
-      loop(stack, environment, target)
+      @tailrec def loop(stack: List[String], target: Long): Long =
+        stack match
+          case head :: next if head == human => target
+          case head :: next =>
+            jobs(head) match
+              case Job.Num(n) =>
+                loop(next, target)
+              case Job.Sum(left, right) =>
+                if monkeys(left)(human) then loop(left :: next, target - evaluator.yell(right))
+                else loop(right :: next, target - evaluator.yell(left))
+              case Job.Dif(left, right) =>
+                if monkeys(left)(human) then loop(left :: next, target + evaluator.yell(right))
+                else loop(right :: next, evaluator.yell(left) - target)
+              case Job.Mul(left, right) =>
+                if monkeys(left)(human) then loop(left :: next, target / evaluator.yell(right))
+                else loop(right :: next, target / evaluator.yell(left))
+              case Job.Div(left, right) =>
+                if monkeys(left)(human) then loop(left :: next, target * evaluator.yell(right))
+                else loop(right :: next, evaluator.yell(left) / target)
+          case Nil => assert(false, "should't happen")
+
+      loop(stack, target)
 
   lazy val inputStream =
     ZStream

@@ -42,10 +42,10 @@ object Day21Suite extends ZIOSpecDefault:
       ),
       suite("part2")(
         test("example") {
-          assertZIO(part2(exampleStream))(equalTo(301))
+          assertZIO(part2(exampleStream))(equalTo(301L))
         },
         test("input.txt") {
-          assertZIO(part2(inputStream))(equalTo(0))
+          assertZIO(part2(inputStream))(equalTo(3769668716709L))
         }
       )
     )
