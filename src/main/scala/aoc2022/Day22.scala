@@ -15,18 +15,50 @@ object Day22 extends ZIOAppDefault:
   case class Graph(nodes: mutable.Map[Position, Node])
   case class Node(neighours: mutable.Map[Orientation, Node])
 
+  object Node:
+    def make = Node(mutable.Map.empty)
+
   object Graph:
     def fromTiles(start: Position, notes: Notes) =
-      val nodes = mutable.Map[Position, Node]()
+      val nodes = mutable.Map(start -> Node.make)
       val expanded = mutable.Set[Position]()
-      def loop(fringe: List[Position]): Unit = fringe match
-        case head :: next => ???
-        case Nil          => ()
+      def loop(fringe: List[Position]): Unit =
+        fringe match
+          case head :: next =>
+            val node = nodes(head)
+            Orientation.values.foreach { orientation =>
+              val maybeNeighbour = orientation.step(head)
+              notes.tileAt(maybeNeighbour) match
+                case Tile.Null => ???
+                case Tile.Open =>
+                  node.neighours(orientation) = nodes.getOrElseUpdate(maybeNeighbour, Node.make)
+                case Tile.Wall => ()
+            }
+            expanded += head
+            loop(next)
+          case Nil => ()
       loop(List(start))
 
   case class Notes(tiles: Array[Array[Tile]]):
     def tileAt(position: Position) =
+      // do wrap-around ???
       tiles(position.y)(position.x)
+
+    def steps(position: Position) =
+      val Position(x, y) = position
+      Orientation.values
+        .map {
+          case Orientation.Right =>
+            if x >= tiles.size then ???
+            else Some(Orientation.Right -> Position(x + 1, y))
+          case Orientation.Down => ???
+          case Orientation.Left => ???
+          case Orientation.Up   => ???
+        }
+        .collect { case Some(a) =>
+          a
+        }
+        .toMap
 
     def ahead(n: Int, status: Status): Position =
       val Status(position, orientation) = status
@@ -37,10 +69,7 @@ object Day22 extends ZIOAppDefault:
         case Orientation.Left  => moveLeft(position, n)
         case Orientation.Up    => moveUp(position, n)
 
-    private def moveRight(position: Position, n: Int): Position =
-      val Position(x, y) = position
-      ???
-
+    private def moveRight(position: Position, n: Int): Position = ???
     private def moveDown(position: Position, n: Int): Position = ???
     private def moveLeft(position: Position, n: Int): Position = ???
     private def moveUp(position: Position, n: Int): Position = ???
@@ -63,6 +92,12 @@ object Day22 extends ZIOAppDefault:
       case Orientation.Down  => Orientation.Right
       case Orientation.Left  => Orientation.Down
       case Orientation.Up    => Orientation.Left
+
+    def step(p: Position): Position = this match
+      case Orientation.Right => p.copy(x = p.x + 1)
+      case Orientation.Down  => p.copy(y = p.y + 1)
+      case Orientation.Left  => p.copy(x = p.x - 1)
+      case Orientation.Up    => p.copy(y = p.y - 1)
 
   case class Path(steps: List[Step])
 
