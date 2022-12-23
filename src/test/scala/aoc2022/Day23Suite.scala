@@ -11,17 +11,23 @@ import Day23.*
 
 object Day23Suite extends ZIOSpecDefault:
 
-  lazy val example =
-    """""".stripMargin
+  val example =
+    """....#..
+      |..###.#
+      |#...#.#
+      |.#...##
+      |#.###..
+      |##.#.##
+      |.#..#..""".stripMargin
 
-  lazy val exampleStream = ZStream.fromIterable(example.split("\n"))
+  val exampleStream = ZStream.fromIterable(example.split("\n"))
 
-  lazy val spec =
+  val spec =
     suite("day23")(
       suite("part1")(
         test("example") {
           assertZIO(part1(exampleStream))(equalTo(0))
-        } @@ ignore,
+        },
         test("input.txt") {
           assertZIO(part1(inputStream))(equalTo(0))
         } @@ ignore
