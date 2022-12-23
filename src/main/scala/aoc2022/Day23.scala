@@ -25,34 +25,30 @@ object Day23 extends ZIOAppDefault:
     case SE extends Direction(+1, +1)
     case SW extends Direction(-1, +1)
 
-  final case class Move(directions: Set[Direction], action: Position => Position)
-
-  object Move:
-    import Direction.*
-    val north = Move(Set(N, NE, NW), _ + N)
-    val south = Move(Set(S, SE, SW), _ + S)
-    val west = Move(Set(W, NW, SW), _ + W)
-    val east = Move(Set(E, NE, SE), _ + E)
+  enum Move(val directions: Set[Direction], val action: Position => Position):
+    case north extends Move(Set(Direction.N, Direction.NE, Direction.NW), _ + Direction.N)
+    case south extends Move(Set(Direction.S, Direction.SE, Direction.SW), _ + Direction.S)
+    case west extends Move(Set(Direction.W, Direction.NW, Direction.SW), _ + Direction.W)
+    case east extends Move(Set(Direction.E, Direction.NE, Direction.SE), _ + Direction.E)
 
   enum ElveRound:
     case DoNothing(stay: Position)
     case Move(from: Position, to: Position)
 
-  class Scan(elves: Set[Position]):
+  final case class State(
+      numRound: Int,
+      elves: Set[Position],
+      moves: List[Move],
+      prevElves: Set[Position] = Set.empty
+  ):
+    def emptyGround: Int =
+      val minX = elves.minBy(_.x).x
+      val maxX = elves.maxBy(_.x).x
+      val minY = elves.minBy(_.y).y
+      val maxY = elves.maxBy(_.y).y
+      (maxX - minX + 1) * (maxY - minY + 1) - elves.size
 
-    final case class State(
-        numRound: Int,
-        elves: Set[Position],
-        moves: List[Move],
-        prevElves: Set[Position] = Set.empty
-    ):
-      def emptyGround: Int =
-        val minX = elves.minBy(_.x).x
-        val maxX = elves.maxBy(_.x).x
-        val minY = elves.minBy(_.y).y
-        val maxY = elves.maxBy(_.y).y
-        (maxX - minX + 1) * (maxY - minY + 1) - elves.size
-
+  class Simulator(elves: Set[Position]):
     def run(finish: State => Boolean) =
       val initial = State(0, elves, List(Move.north, Move.south, Move.west, Move.east))
       LazyList
@@ -62,12 +58,8 @@ object Day23 extends ZIOAppDefault:
             then ElveRound.DoNothing(elve)
             else
               moves
-                .find { case Move(directions, _) =>
-                  !directions.map(elve + _).exists(elves)
-                }
-                .map { case Move(_, action) =>
-                  ElveRound.Move(elve, action(elve))
-                }
+                .find { move => !move.directions.map(elve + _).exists(elves) }
+                .map { move => ElveRound.Move(elve, move.action(elve)) }
                 .getOrElse(ElveRound.DoNothing(elve))
           }
           val counters = firstHalf
@@ -90,25 +82,21 @@ object Day23 extends ZIOAppDefault:
       .via(ZPipeline.utf8Decode >>> ZPipeline.splitLines)
       .orDie
 
-  def part1(is: UStream[String]): Task[Int] =
+  def part[A](finishWhen: State => Boolean)(result: State => A)(is: UStream[String]): Task[A] =
     for elves <-
-        is.zipWithIndex.flatMap { (line, y) =>
-          ZStream
-            .fromIterable(line)
-            .zipWithIndex
-            .collect { case ('#', x) => Position(x.toInt, y.toInt) }
-        }.runCollect
-    yield Scan(elves.toSet).run(_.numRound == 10).emptyGround
+        is.zipWithIndex
+          .flatMap { (line, y) =>
+            ZStream
+              .fromIterable(line)
+              .zipWithIndex
+              .collect { case ('#', x) => Position(x.toInt, y.toInt) }
+          }
+          .runCollect
+          .map(_.toSet)
+    yield Simulator(elves).run(finishWhen).pipe(result)
 
-  def part2(is: UStream[String]): Task[Int] =
-    for elves <-
-        is.zipWithIndex.flatMap { (line, y) =>
-          ZStream
-            .fromIterable(line)
-            .zipWithIndex
-            .collect { case ('#', x) => Position(x.toInt, y.toInt) }
-        }.runCollect
-    yield Scan(elves.toSet).run(st => st.elves == st.prevElves).numRound
+  val part1 = part(_.numRound == 10)(_.emptyGround)
+  val part2 = part(st => st.elves == st.prevElves)(_.numRound)
 
   lazy val run =
     part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")
