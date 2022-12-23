@@ -40,7 +40,12 @@ object Day23 extends ZIOAppDefault:
 
   class Scan(elves: Set[Position]):
 
-    final case class State(elves: Set[Position], moves: List[Move]):
+    final case class State(
+        numRound: Int,
+        elves: Set[Position],
+        moves: List[Move],
+        prevElves: Set[Position] = Set.empty
+    ):
       def emptyGround: Int =
         val minX = elves.minBy(_.x).x
         val maxX = elves.maxBy(_.x).x
@@ -48,33 +53,36 @@ object Day23 extends ZIOAppDefault:
         val maxY = elves.maxBy(_.y).y
         (maxX - minX + 1) * (maxY - minY + 1) - elves.size
 
-    def run(numSteps: Int) =
-      val initial = State(elves, List(Move.north, Move.south, Move.west, Move.east))
-      (1 to numSteps).foldLeft(initial) { case (State(elves, moves), step) =>
-        val firstHalf = elves.toList.map { elve =>
-          if !Direction.values.map(elve + _).exists(elves)
-          then ElveRound.DoNothing(elve)
-          else
-            moves
-              .find { case Move(directions, _) =>
-                !directions.map(elve + _).exists(elves)
-              }
-              .map { case Move(_, action) =>
-                ElveRound.Move(elve, action(elve))
-              }
-              .getOrElse(ElveRound.DoNothing(elve))
+    def run(finish: State => Boolean) =
+      val initial = State(0, elves, List(Move.north, Move.south, Move.west, Move.east))
+      LazyList
+        .iterate(initial) { case State(step, elves, moves, _) =>
+          val firstHalf = elves.toList.map { elve =>
+            if !Direction.values.map(elve + _).exists(elves)
+            then ElveRound.DoNothing(elve)
+            else
+              moves
+                .find { case Move(directions, _) =>
+                  !directions.map(elve + _).exists(elves)
+                }
+                .map { case Move(_, action) =>
+                  ElveRound.Move(elve, action(elve))
+                }
+                .getOrElse(ElveRound.DoNothing(elve))
+          }
+          val counters = firstHalf
+            .collect { case ElveRound.Move(_, to) => to }
+            .groupMapReduce(identity)(_ => 1)(_ + _)
+          val secondHalf =
+            firstHalf.map {
+              case ElveRound.DoNothing(stay)                  => stay
+              case ElveRound.Move(_, to) if counters(to) == 1 => to
+              case ElveRound.Move(from, _)                    => from
+            }.toSet
+          State(step + 1, secondHalf, moves.rotate, elves)
         }
-        val counters = firstHalf
-          .collect { case ElveRound.Move(_, to) => to }
-          .groupMapReduce(identity)(_ => 1)(_ + _)
-        val secondHalf =
-          firstHalf.map {
-            case ElveRound.DoNothing(stay)                  => stay
-            case ElveRound.Move(_, to) if counters(to) == 1 => to
-            case ElveRound.Move(from, _)                    => from
-          }.toSet
-        State(secondHalf, moves.rotate)
-      }
+        .dropWhile(state => !finish(state))
+        .head
 
   lazy val inputStream =
     ZStream
@@ -90,10 +98,17 @@ object Day23 extends ZIOAppDefault:
             .zipWithIndex
             .collect { case ('#', x) => Position(x.toInt, y.toInt) }
         }.runCollect
-    yield Scan(elves.toSet).run(10).emptyGround
+    yield Scan(elves.toSet).run(_.numRound == 10).emptyGround
 
   def part2(is: UStream[String]): Task[Int] =
-    ZIO.succeed(-1)
+    for elves <-
+        is.zipWithIndex.flatMap { (line, y) =>
+          ZStream
+            .fromIterable(line)
+            .zipWithIndex
+            .collect { case ('#', x) => Position(x.toInt, y.toInt) }
+        }.runCollect
+    yield Scan(elves.toSet).run(st => st.elves == st.prevElves).numRound
 
   lazy val run =
     part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")
