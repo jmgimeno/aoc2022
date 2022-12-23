@@ -25,11 +25,11 @@ object Day23 extends ZIOAppDefault:
     case SE extends Direction(+1, +1)
     case SW extends Direction(-1, +1)
 
-  enum Move(val directions: Set[Direction], val action: Position => Position):
-    case north extends Move(Set(Direction.N, Direction.NE, Direction.NW), _ + Direction.N)
-    case south extends Move(Set(Direction.S, Direction.SE, Direction.SW), _ + Direction.S)
-    case west extends Move(Set(Direction.W, Direction.NW, Direction.SW), _ + Direction.W)
-    case east extends Move(Set(Direction.E, Direction.NE, Direction.SE), _ + Direction.E)
+  enum Move(val directions: List[Direction], val action: Position => Position):
+    case north extends Move(List(Direction.N, Direction.NE, Direction.NW), _ + Direction.N)
+    case south extends Move(List(Direction.S, Direction.SE, Direction.SW), _ + Direction.S)
+    case west extends Move(List(Direction.W, Direction.NW, Direction.SW), _ + Direction.W)
+    case east extends Move(List(Direction.E, Direction.NE, Direction.SE), _ + Direction.E)
 
   enum ElveRound:
     case DoNothing(stay: Position)
@@ -53,7 +53,7 @@ object Day23 extends ZIOAppDefault:
       val initial = State(0, elves, List(Move.north, Move.south, Move.west, Move.east))
       LazyList
         .iterate(initial) { case State(step, elves, moves, _) =>
-          val firstHalf = elves.toList.map { elve =>
+          val firstHalf = elves.iterator.map { elve =>
             if !Direction.values.map(elve + _).exists(elves)
             then ElveRound.DoNothing(elve)
             else
@@ -61,7 +61,7 @@ object Day23 extends ZIOAppDefault:
                 .find { move => !move.directions.map(elve + _).exists(elves) }
                 .map { move => ElveRound.Move(elve, move.action(elve)) }
                 .getOrElse(ElveRound.DoNothing(elve))
-          }
+          }.toList
           val counters = firstHalf
             .collect { case ElveRound.Move(_, to) => to }
             .groupMapReduce(identity)(_ => 1)(_ + _)
