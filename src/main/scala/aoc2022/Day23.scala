@@ -16,14 +16,14 @@ object Day23 extends ZIOAppDefault:
     infix def +(direction: Direction) = Position(x + direction.dx, y + direction.dy)
 
   enum Direction(val dx: Int, val dy: Int):
-    case N extends Direction(0, +1)
-    case S extends Direction(0, -1)
+    case N extends Direction(0, -1)
+    case S extends Direction(0, +1)
     case W extends Direction(-1, 0)
     case E extends Direction(+1, 0)
-    case NE extends Direction(+1, +1)
-    case NW extends Direction(-1, +1)
-    case SE extends Direction(+1, -1)
-    case SW extends Direction(-1, -1)
+    case NE extends Direction(+1, -1)
+    case NW extends Direction(-1, -1)
+    case SE extends Direction(+1, +1)
+    case SW extends Direction(-1, +1)
 
   final case class Move(directions: Set[Direction], action: Position => Position)
 
@@ -51,13 +51,13 @@ object Day23 extends ZIOAppDefault:
     def run(numSteps: Int) =
       val initial = State(elves, List(Move.north, Move.south, Move.west, Move.east))
       (1 to numSteps).foldLeft(initial) { case (State(elves, moves), step) =>
-        val firstHalf = elves.map { elve =>
-          if Direction.values.map(elve + _).count(elves) == 0
+        val firstHalf = elves.toList.map { elve =>
+          if !Direction.values.map(elve + _).exists(elves)
           then ElveRound.DoNothing(elve)
           else
             moves
               .find { case Move(directions, _) =>
-                directions.map(elve + _).count(elves) == 0
+                !directions.map(elve + _).exists(elves)
               }
               .map { case Move(_, action) =>
                 ElveRound.Move(elve, action(elve))
@@ -72,7 +72,7 @@ object Day23 extends ZIOAppDefault:
             case ElveRound.DoNothing(stay)                  => stay
             case ElveRound.Move(_, to) if counters(to) == 1 => to
             case ElveRound.Move(from, _)                    => from
-          }
+          }.toSet
         State(secondHalf, moves.rotate)
       }
 
