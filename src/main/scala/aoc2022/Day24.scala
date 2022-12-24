@@ -73,11 +73,11 @@ object Day24 extends ZIOAppDefault:
 
     val bounds = Bounds(width, height)
     val period = mcm(width, height)
+    val cache = mutable.Map[Int, Set[Position]]()
 
-    def minPath: Int =
-      val open = mutable.Queue(start -> 0)
-      val cache = mutable.Map(0 -> blizzards.map(_(0)).toSet)
-      val seen = mutable.Set(start -> 0)
+    def minPath(start: Position, end: Position, starting: Int = 0): Int =
+      val open = mutable.Queue(start -> starting)
+      val seen = mutable.Set(start -> starting)
 
       @tailrec def loop: Int =
         if open.isEmpty then Integer.MAX_VALUE
@@ -98,6 +98,13 @@ object Day24 extends ZIOAppDefault:
               }
             loop
       loop
+
+    def part1 = minPath(start, end)
+
+    def part2 =
+      val first = minPath(start, end)
+      val second = minPath(end, start, first)
+      minPath(start, end, second)
 
   object Parser:
     def parseBlizzard(x: Int, y: Int, width: Int, height: Int, c: Char) = c match
@@ -126,10 +133,11 @@ object Day24 extends ZIOAppDefault:
 
   def part1(is: UStream[String]): Task[Int] =
     for valley <- is.runCollect.map(Parser.parseInput)
-    yield valley.minPath
+    yield valley.part1
 
   def part2(is: UStream[String]): Task[Int] =
-    ZIO.succeed(-1)
+    for valley <- is.runCollect.map(Parser.parseInput)
+    yield valley.part2
 
   lazy val run =
     part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")
