@@ -12,6 +12,8 @@ object Day23 extends ZIOAppDefault:
       case head :: next => next :+ head
       case Nil          => Nil
 
+  def not[A](p: A => Boolean)(a: A): Boolean = !p(a)
+
   final case class Position(x: Int, y: Int):
     infix def +(direction: Direction) = Position(x + direction.dx, y + direction.dy)
 
@@ -31,9 +33,7 @@ object Day23 extends ZIOAppDefault:
     case west extends Move(List(Direction.W, Direction.NW, Direction.SW), _ + Direction.W)
     case east extends Move(List(Direction.E, Direction.NE, Direction.SE), _ + Direction.E)
 
-  enum ElveRound:
-    case DoNothing(stay: Position)
-    case Move(from: Position, to: Position)
+  final case class Proposal(from: Position, to: Position)
 
   final case class State(
       numRound: Int,
@@ -53,27 +53,26 @@ object Day23 extends ZIOAppDefault:
       val initial = State(0, elves, List(Move.north, Move.south, Move.west, Move.east))
       LazyList
         .iterate(initial) { case State(step, elves, moves, _) =>
-          val firstHalf = elves.iterator.map { elve =>
-            if !Direction.values.map(elve + _).exists(elves)
-            then ElveRound.DoNothing(elve)
-            else
-              moves
-                .find { move => !move.directions.map(elve + _).exists(elves) }
-                .map { move => ElveRound.Move(elve, move.action(elve)) }
-                .getOrElse(ElveRound.DoNothing(elve))
-          }.toList
-          val counters = firstHalf
-            .collect { case ElveRound.Move(_, to) => to }
-            .groupMapReduce(identity)(_ => 1)(_ + _)
+          val (stayAtFirst, proposals) =
+            elves.iterator.foldLeft((Set.empty[Position], List.empty[Proposal])) {
+              case ((stay, proposals), elve) =>
+                if !Direction.values.map(elve + _).exists(elves)
+                then (stay + elve, proposals)
+                else
+                  moves
+                    .find { move => !move.directions.map(elve + _).exists(elves) } match
+                    case None       => (stay + elve, proposals)
+                    case Some(move) => (stay, Proposal(elve, move.action(elve)) :: proposals)
+            }
+          val counters = proposals
+            .groupMapReduce(_.to)(_ => 1)(_ + _)
           val secondHalf =
-            firstHalf.map {
-              case ElveRound.DoNothing(stay)                  => stay
-              case ElveRound.Move(_, to) if counters(to) == 1 => to
-              case ElveRound.Move(from, _)                    => from
+            proposals.iterator.map { case Proposal(from, to) =>
+              if counters(to) == 1 then to else from
             }.toSet
-          State(step + 1, secondHalf, moves.rotate, elves)
+          State(step + 1, stayAtFirst ++ secondHalf, moves.rotate, elves)
         }
-        .dropWhile(state => !finish(state))
+        .dropWhile(not(finish))
         .head
 
   lazy val inputStream =
