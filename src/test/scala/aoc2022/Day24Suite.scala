@@ -28,12 +28,12 @@ object Day24Suite extends ZIOSpecDefault:
           assertZIO(part1(exampleStream))(equalTo(18))
         },
         test("input.txt") {
-          assertZIO(part1(inputStream))(equalTo(0))
-        } @@ ignore
+          assertZIO(part1(inputStream))(equalTo(281))
+        }
       ),
       suite("part2")(
         test("example") {
-          assertZIO(part2(exampleStream))(equalTo(0))
+          assertZIO(part2(exampleStream))(equalTo(54))
         } @@ ignore,
         test("input.txt") {
           assertZIO(part2(inputStream))(equalTo(0))

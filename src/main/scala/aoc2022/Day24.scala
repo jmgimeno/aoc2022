@@ -6,6 +6,7 @@ import zio.stream.*
 import scala.collection.mutable
 import scala.util.chaining.scalaUtilChainingOps
 import scala.annotation.tailrec
+import scala.annotation.newMain
 
 object Day24 extends ZIOAppDefault:
 
@@ -23,7 +24,7 @@ object Day24 extends ZIOAppDefault:
     if a % b == 0 then b
     else mcd(b, a % b)
 
-  private def mcm(a: Int, b: Int) = a * b / mcd(a, b)
+  private def mcm(a: Int, b: Int) = (a * b) / mcd(a, b)
 
   enum Direction(val dx: Int, val dy: Int):
     case Up extends Direction(0, -1)
@@ -71,11 +72,12 @@ object Day24 extends ZIOAppDefault:
         && vertical.getOrElse(position.x, List.empty).forall(_(t) != position)
 
     val bounds = Bounds(width, height)
-    val period = mcm(width, height).tap(println)
+    val period = mcm(width, height)
 
     def minPath: Int =
       val open = mutable.Queue(start -> 0)
       val cache = mutable.Map(0 -> blizzards.map(_(0)).toSet)
+      val seen = mutable.Set(start -> 0)
 
       @tailrec def loop: Int =
         if open.isEmpty then Integer.MAX_VALUE
@@ -89,7 +91,10 @@ object Day24 extends ZIOAppDefault:
                 cache.getOrElseUpdate((time + 1) % period, blizzards.map(_(time + 1)).toSet)
               )
               .foreach { position =>
-                open += position -> (time + 1)
+                val newState = position -> (time + 1)
+                if !seen(newState) then
+                  open += newState
+                  seen += newState
               }
             loop
       loop
