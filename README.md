@@ -29,3 +29,4 @@
 - Day 21: Monkey Math
 - Day 22: Monkey Map
 - Day 23: Unstable Diffusion
+- Day 24: Blizzard Basin
