@@ -6,7 +6,6 @@ import zio.stream.*
 import scala.collection.mutable
 import scala.util.chaining.scalaUtilChainingOps
 import scala.annotation.tailrec
-import scala.annotation.newMain
 
 object Day24 extends ZIOAppDefault:
 
@@ -54,22 +53,6 @@ object Day24 extends ZIOAppDefault:
     // at least both example an input have this start/end
     val start = Position(0, -1)
     val end = Position(width - 1, height)
-
-    val horizontal = blizzards
-      .collect { case h: Blizzard.Horizontal =>
-        h
-      }
-      .groupBy(_.y)
-
-    val vertical = blizzards
-      .collect { case v: Blizzard.Vertical =>
-        v
-      }
-      .groupBy(_.x)
-
-    def free(t: Int)(position: Position): Boolean =
-      horizontal.getOrElse(position.y, List.empty).forall(_(t) != position)
-        && vertical.getOrElse(position.x, List.empty).forall(_(t) != position)
 
     val bounds = Bounds(width, height)
     val period = mcm(width, height)
