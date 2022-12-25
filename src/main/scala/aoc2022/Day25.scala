@@ -82,8 +82,5 @@ object Day25 extends ZIOAppDefault:
       .runSum
       .map(_.toSnafu)
 
-  def part2(is: UStream[String]): Task[Long] =
-    ZIO.succeed(-1)
-
   lazy val run =
-    part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")
+    part1(inputStream).debug("PART1")
