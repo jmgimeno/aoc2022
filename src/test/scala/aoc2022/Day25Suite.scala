@@ -31,7 +31,7 @@ object Day25Suite extends ZIOSpecDefault:
   val spec =
     suite("day25")(
       test("roundtrip")(
-        check(Gen.long(1, 1_000_000_000)) { n =>
+        check(Gen.long(0, 1_000_000_000)) { n =>
           assert(n.toSnafu.to10)(equalTo(n))
         }
       ),
