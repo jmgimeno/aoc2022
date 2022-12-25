@@ -77,3 +77,8 @@
 - the map is a stack of rectangles and you can move inside a rectangle or move to another one
   - if you do not find a prev/next rectangle you must circle back
   - a rectangle + topLeft + dimensions
+
+## Day 24
+
+- cache horizontal and vertical blizzards separately
+- use a-star instead of bfs
