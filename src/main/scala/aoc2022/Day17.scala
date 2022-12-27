@@ -26,19 +26,19 @@ object Day17 extends ZIOAppDefault:
 
   case class Rock(bytes: Vector[Byte]):
 
-    val masks = Vector.iterate(1, 7)(_ * 2)
-
     def tryMove(move: Move): Option[Rock] = move match
       case Move.Left  => tryMoveLeft
       case Move.Right => tryMoveRight
 
     private def tryMoveLeft =
-      val canMoveLeft = bytes.forall(b => (b & masks(6)) == 0)
+      // 0 100 - 0000
+      val canMoveLeft = bytes.forall(b => (b & 0x40) == 0)
       if canMoveLeft then Some(Rock(bytes.map(b => (b << 1).toByte)))
       else None
 
     private def tryMoveRight =
-      val canMoveRight = bytes.forall(b => (b & masks(0)) == 0)
+      // 0 000 - 0001
+      val canMoveRight = bytes.forall(b => (b & 0x01) == 0)
       if canMoveRight then Some(Rock(bytes.map(b => (b >>> 1).toByte)))
       else None
 
@@ -57,11 +57,11 @@ object Day17 extends ZIOAppDefault:
           previous: Vector[Byte]
       ): (Vector[Byte], LazyList[Move]) =
         val nextMove #:: restMoves = moves: @unchecked
-        println(s"rock: $rock")
-        println(s"lines $lines")
-        println(s"previous: $previous")
-        println(s"WHOLE: ${previous ++ rock.bytes ++ lines}")
-        println(nextMove)
+        // println(s"rock: $rock")
+        // println(s"lines $lines")
+        // println(s"previous: $previous")
+        // println(s"WHOLE: ${previous ++ rock.bytes ++ lines}")
+        // println(nextMove)
         val background = lines.take(bytes.size)
         val nextLines = lines.drop(bytes.size)
         val newRock = rock.move(background, nextMove)
@@ -90,9 +90,9 @@ object Day17 extends ZIOAppDefault:
   case class Tower(lines: Vector[Byte]):
     def height: Int = lines.size
     def add(rock: Rock, moves: LazyList[Move]): (Tower, LazyList[Move]) =
-      val initLines = Vector[Byte](0, 0, 0) ++ lines.dropWhile(_ == 0)
+      val initLines = Vector.fill[Byte](rock.bytes.size + 3)(0) ++ lines.dropWhile(_ == 0)
       val (newLines, restMoves) = rock.moveToStop(initLines, moves)
-      println(s"newLines: $newLines")
+      // println(s"newLines: $newLines")
       (Tower(newLines), restMoves)
 
   object Tower:
@@ -120,7 +120,7 @@ object Day17 extends ZIOAppDefault:
 
   def part1(is: UStream[Char]): Task[Int] =
     for moveSequence <- is.map(Move.parse).runCollect.map(_.cycle)
-    yield Simulate(moveSequence, Rock.sequence).run(1).tap(println).height
+    yield Simulate(moveSequence, Rock.sequence).run(2022).tap(println).height
 
   def part2(is: UStream[Char]): Task[Int] =
     ZIO.succeed(-1)
