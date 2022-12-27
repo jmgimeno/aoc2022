@@ -4,6 +4,7 @@ import zio.*
 import zio.stream.*
 
 import scala.util.chaining.scalaUtilChainingOps
+import scala.annotation.tailrec
 
 object Day17 extends ZIOAppDefault:
 
@@ -41,8 +42,35 @@ object Day17 extends ZIOAppDefault:
       if canMoveRight then Some(Rock(bytes.map(b => (b << 1).toByte)))
       else None
 
+    def move(background: Vector[Byte], move: Move): Rock =
+      tryMove(move) match
+        case Some(newRock) =>
+          val canMove = background.zip(newRock.bytes).forall((b, r) => (b & r) == 0)
+          if canMove then newRock else this
+        case None => this
+
     def moveToStop(lines: Vector[Byte], moves: LazyList[Move]): (Vector[Byte], LazyList[Move]) =
-      ???
+      @tailrec def loop(
+          lines: Vector[Byte],
+          moves: LazyList[Move],
+          previous: Vector[Byte]
+      ): (Vector[Byte], LazyList[Move]) =
+        val nextMove #:: restMoves = moves: @unchecked
+        val prefix = lines.take(bytes.size)
+        val newRock = move(prefix, nextMove)
+        if lines.size == bytes.size then
+          val stopAtBottom = prefix.zip(newRock.bytes).map(_ | _).map(_.toByte)
+          (previous ++ stopAtBottom, restMoves)
+        else
+          val canMoveDown = (bytes.last & lines(bytes.size)) == 0
+          if canMoveDown then
+            val newPrevious = previous :+ lines(0)
+            loop(lines.tail, restMoves, newPrevious)
+          else
+            val stopAtMiddle = prefix.zip(newRock.bytes).map(_ | _).map(_.toByte)
+            (previous ++ stopAtMiddle ++ lines.drop(bytes.size), restMoves)
+
+      loop(lines, moves, Vector.empty)
 
   object Rock:
     val dash = Rock(Vector(30))
