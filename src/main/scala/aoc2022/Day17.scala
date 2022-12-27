@@ -33,13 +33,13 @@ object Day17 extends ZIOAppDefault:
       case Move.Right => tryMoveRight
 
     private def tryMoveLeft =
-      val canMoveLeft = bytes.forall(b => (b & masks(0)) != 1)
-      if canMoveLeft then Some(Rock(bytes.map(b => (b >>> 1).toByte)))
+      val canMoveLeft = bytes.forall(b => (b & masks(6)) == 0)
+      if canMoveLeft then Some(Rock(bytes.map(b => (b << 1).toByte)))
       else None
 
     private def tryMoveRight =
-      val canMoveRight = bytes.forall(b => (b & masks(6)) != 1)
-      if canMoveRight then Some(Rock(bytes.map(b => (b << 1).toByte)))
+      val canMoveRight = bytes.forall(b => (b & masks(0)) == 0)
+      if canMoveRight then Some(Rock(bytes.map(b => (b >>> 1).toByte)))
       else None
 
     def move(background: Vector[Byte], move: Move): Rock =
@@ -51,26 +51,33 @@ object Day17 extends ZIOAppDefault:
 
     def moveToStop(lines: Vector[Byte], moves: LazyList[Move]): (Vector[Byte], LazyList[Move]) =
       @tailrec def loop(
+          rock: Rock,
           lines: Vector[Byte],
           moves: LazyList[Move],
           previous: Vector[Byte]
       ): (Vector[Byte], LazyList[Move]) =
         val nextMove #:: restMoves = moves: @unchecked
-        val prefix = lines.take(bytes.size)
-        val newRock = move(prefix, nextMove)
-        if lines.size == bytes.size then
-          val stopAtBottom = prefix.zip(newRock.bytes).map(_ | _).map(_.toByte)
+        println(s"rock: $rock")
+        println(s"lines $lines")
+        println(s"previous: $previous")
+        println(s"WHOLE: ${previous ++ rock.bytes ++ lines}")
+        println(nextMove)
+        val background = lines.take(bytes.size)
+        val nextLines = lines.drop(bytes.size)
+        val newRock = rock.move(background, nextMove)
+        if nextLines.isEmpty then
+          val stopAtBottom = background.zip(newRock.bytes).map(_ | _).map(_.toByte)
           (previous ++ stopAtBottom, restMoves)
         else
-          val canMoveDown = (bytes.last & lines(bytes.size)) == 0
+          val canMoveDown = (bytes.last & nextLines.head) == 0
           if canMoveDown then
-            val newPrevious = previous :+ lines(0)
-            loop(lines.tail, restMoves, newPrevious)
+            val newPrevious = previous :+ lines.head
+            loop(newRock, lines.tail, restMoves, newPrevious)
           else
-            val stopAtMiddle = prefix.zip(newRock.bytes).map(_ | _).map(_.toByte)
-            (previous ++ stopAtMiddle ++ lines.drop(bytes.size), restMoves)
+            val stopAtMiddle = background.zip(newRock.bytes).map(_ | _).map(_.toByte)
+            (previous ++ stopAtMiddle ++ nextLines, restMoves)
 
-      loop(lines, moves, Vector.empty)
+      loop(this, lines, moves, Vector.empty)
 
   object Rock:
     val dash = Rock(Vector(30))
@@ -85,6 +92,7 @@ object Day17 extends ZIOAppDefault:
     def add(rock: Rock, moves: LazyList[Move]): (Tower, LazyList[Move]) =
       val initLines = Vector[Byte](0, 0, 0) ++ lines.dropWhile(_ == 0)
       val (newLines, restMoves) = rock.moveToStop(initLines, moves)
+      println(s"newLines: $newLines")
       (Tower(newLines), restMoves)
 
   object Tower:
@@ -93,9 +101,6 @@ object Day17 extends ZIOAppDefault:
   case class State(tower: Tower, moves: LazyList[Move], rocks: LazyList[Rock])
 
   case class Simulate(moves: LazyList[Move], rocks: LazyList[Rock]):
-
-    private def forceThreeEmpties(tower: Tower): Tower =
-      Tower(Vector[Byte](0, 0, 0) ++ tower.lines.dropWhile(_ == 0))
 
     def runStep(state: State): State =
       val State(tower, moves, rock #:: restRocks) = state: @unchecked
@@ -115,7 +120,7 @@ object Day17 extends ZIOAppDefault:
 
   def part1(is: UStream[Char]): Task[Int] =
     for moveSequence <- is.map(Move.parse).runCollect.map(_.cycle)
-    yield Simulate(moveSequence, Rock.sequence).run(2022).height
+    yield Simulate(moveSequence, Rock.sequence).run(1).tap(println).height
 
   def part2(is: UStream[Char]): Task[Int] =
     ZIO.succeed(-1)
