@@ -70,11 +70,6 @@ object Day17 extends ZIOAppDefault:
           background: Vector[Byte]
       ): (Vector[Byte], LazyList[Move]) =
         val nextMove #:: restMoves = moves: @unchecked
-        // println(s"rock: ${rock.bytes.debug}")
-        // println(s"lines ${lines.debug}")
-        // println(s"previous: ${previous.debug}")
-        // println(s"WHOLE: ${previous ++ rock.bytes ++ lines}")
-        // println(nextMove)
         val newRock = rock.tryMoveHorizontal(background, nextMove).getOrElse(rock)
         val newBackground = background.drop(1) :+ lines.head
         val canMoveDown = newBackground.zip(newRock.bytes).forall((b, r) => (b & r) == 0)
@@ -115,7 +110,6 @@ object Day17 extends ZIOAppDefault:
     def add(rock: Rock, moves: LazyList[Move]): (Tower, LazyList[Move]) =
       val normalizeLines = Vector.fill[Byte](3)(0x00) ++ lines.dropWhile(_ == 0)
       val (newLines, restMoves) = rock.moveToStop(normalizeLines, moves)
-      // println(s"newLines: $newLines")
       (Tower(newLines), restMoves)
 
   object Tower:

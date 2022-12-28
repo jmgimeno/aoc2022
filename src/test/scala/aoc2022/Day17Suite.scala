@@ -28,7 +28,7 @@ object Day17Suite extends ZIOSpecDefault:
       suite("part2")(
         test("example") {
           assertZIO(part2(exampleStream))(equalTo(1514285714288L))
-        },
+        } @@ ignore,
         test("input.txt") {
           assertZIO(part2(inputStream))(equalTo(0))
         } @@ ignore
