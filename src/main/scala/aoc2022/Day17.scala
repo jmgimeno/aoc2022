@@ -8,6 +8,21 @@ import scala.annotation.tailrec
 
 object Day17 extends ZIOAppDefault:
 
+  extension (b: Byte)
+    def toBinStr =
+      (List.fill(7)("0") ++
+        List
+          .unfold(b) { b =>
+            if b != 0
+            then Some((b % 2).toString, (b / 2).toByte)
+            else None
+          }
+          .reverse).foldLeft("")(_ + _).takeRight(7)
+
+  extension (bytes: Vector[Byte])
+    def debug =
+      bytes.map(_.toBinStr)
+
   extension [A](elements: IterableOnce[A])
     def cycle: LazyList[A] =
       LazyList.continually(elements).flatten
@@ -26,77 +41,80 @@ object Day17 extends ZIOAppDefault:
 
   case class Rock(bytes: Vector[Byte]):
 
-    def tryMove(move: Move): Option[Rock] = move match
-      case Move.Left  => tryMoveLeft
-      case Move.Right => tryMoveRight
-
-    private def tryMoveLeft =
+    def tryMoveInsideBounds(move: Move): Option[Rock] = move match
       // 0 100 - 0000
-      val canMoveLeft = bytes.forall(b => (b & 0x40) == 0)
-      if canMoveLeft then Some(Rock(bytes.map(b => (b << 1).toByte)))
-      else None
-
-    private def tryMoveRight =
+      case Move.Left if bytes.forall(b => (b & 0x40) == 0) =>
+        Some(Rock(bytes.map(b => (b << 1).toByte)))
       // 0 000 - 0001
-      val canMoveRight = bytes.forall(b => (b & 0x01) == 0)
-      if canMoveRight then Some(Rock(bytes.map(b => (b >>> 1).toByte)))
-      else None
+      case Move.Right if bytes.forall(b => (b & 0x01) == 0) =>
+        Some(Rock(bytes.map(b => (b >>> 1).toByte)))
+      case _ => None
 
-    def move(background: Vector[Byte], move: Move): Rock =
-      tryMove(move) match
-        case Some(newRock) =>
-          val canMove = background.zip(newRock.bytes).forall((b, r) => (b & r) == 0)
-          if canMove then newRock else this
-        case None => this
+    def tryMoveHorizontal(background: Vector[Byte], move: Move): Option[Rock] =
+      assert(background.zip(bytes).forall((b, r) => (b & r) == 0), "we shouldn't have interference")
+      tryMoveInsideBounds(move).filter { newRock =>
+        background.zip(newRock.bytes).forall((b, r) => (b & r) == 0)
+      }
 
     def moveToStop(lines: Vector[Byte], moves: LazyList[Move]): (Vector[Byte], LazyList[Move]) =
       @tailrec def loop(
           rock: Rock,
           lines: Vector[Byte],
           moves: LazyList[Move],
-          previous: Vector[Byte]
+          previous: Vector[Byte],
+          background: Vector[Byte]
       ): (Vector[Byte], LazyList[Move]) =
         val nextMove #:: restMoves = moves: @unchecked
-        // println(s"rock: $rock")
-        // println(s"lines $lines")
-        // println(s"previous: $previous")
+        // println(s"rock: ${rock.bytes.debug}")
+        // println(s"lines ${lines.debug}")
+        // println(s"previous: ${previous.debug}")
         // println(s"WHOLE: ${previous ++ rock.bytes ++ lines}")
         // println(nextMove)
-        val background = lines.take(bytes.size)
-        val nextLines = lines.drop(bytes.size)
-        val newRock = rock.move(background, nextMove)
-        if nextLines.isEmpty then
-          val stopAtBottom = background.zip(newRock.bytes).map(_ | _).map(_.toByte)
-          (previous ++ stopAtBottom, restMoves)
+        val newRock = rock.tryMoveHorizontal(background, nextMove).getOrElse(rock)
+        val newBackground = background.drop(1) :+ lines.head
+        val canMoveDown = newBackground.zip(newRock.bytes).forall((b, r) => (b & r) == 0)
+        if canMoveDown then
+          val newPrevious = previous :+ background.head
+          loop(newRock, lines.tail, restMoves, newPrevious, newBackground)
         else
-          val canMoveDown = (bytes.last & nextLines.head) == 0
-          if canMoveDown then
-            val newPrevious = previous :+ lines.head
-            loop(newRock, lines.tail, restMoves, newPrevious)
-          else
-            val stopAtMiddle = background.zip(newRock.bytes).map(_ | _).map(_.toByte)
-            (previous ++ stopAtMiddle ++ nextLines, restMoves)
+          val fusedWithBackground = background.zip(newRock.bytes).map(_ | _).map(_.toByte)
+          (previous ++ fusedWithBackground ++ lines, restMoves)
 
-      loop(this, lines, moves, Vector.empty)
+      loop(this, lines, moves, Vector.empty, Vector.fill(bytes.length)(0x00))
 
   object Rock:
-    val dash = Rock(Vector(30))
-    val cross = Rock(Vector(8, 28, 8))
-    val angle = Rock(Vector(4, 4, 28))
-    val needle = Rock(Vector(16, 16, 16, 16))
-    val square = Rock(Vector(24, 24))
+    // ··####· 0x1E
+    val dash = Rock(Vector(0x1e))
+    // ···#··· 0x08
+    // ··###·· 0x1C
+    // ...#... 0x08
+    val cross = Rock(Vector(0x08, 0x1c, 0x08))
+    // ....#·· 0x04
+    // ....#·· 0x04
+    // ..###·· 0x1C
+    val angle = Rock(Vector(0x04, 0x04, 0x1c))
+    // ..#.... 0x10
+    // ..#.... 0x10
+    // ..#.... 0x10
+    // ..#.... 0x10
+    val needle = Rock(Vector(0x10, 0x10, 0x10, 0x10))
+    // ..##... 0x18
+    // ..##... 0x18
+    val square = Rock(Vector(0x18, 0x18))
     val sequence = List(dash, cross, angle, needle, square).cycle
 
   case class Tower(lines: Vector[Byte]):
-    def height: Int = lines.size
+
+    def height: Int = lines.dropWhile(_ == 0x00).length - 1
+
     def add(rock: Rock, moves: LazyList[Move]): (Tower, LazyList[Move]) =
-      val initLines = Vector.fill[Byte](rock.bytes.size + 3)(0) ++ lines.dropWhile(_ == 0)
-      val (newLines, restMoves) = rock.moveToStop(initLines, moves)
+      val normalizeLines = Vector.fill[Byte](3)(0x00) ++ lines.dropWhile(_ == 0)
+      val (newLines, restMoves) = rock.moveToStop(normalizeLines, moves)
       // println(s"newLines: $newLines")
       (Tower(newLines), restMoves)
 
   object Tower:
-    def make = Tower(Vector.empty)
+    def make = Tower(Vector(0x7f))
 
   case class State(tower: Tower, moves: LazyList[Move], rocks: LazyList[Rock])
 
@@ -120,7 +138,7 @@ object Day17 extends ZIOAppDefault:
 
   def part1(is: UStream[Char]): Task[Int] =
     for moveSequence <- is.map(Move.parse).runCollect.map(_.cycle)
-    yield Simulate(moveSequence, Rock.sequence).run(2022).tap(println).height
+    yield Simulate(moveSequence, Rock.sequence).run(2022).height
 
   def part2(is: UStream[Char]): Task[Int] =
     ZIO.succeed(-1)
