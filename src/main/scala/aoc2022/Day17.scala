@@ -27,9 +27,14 @@ object Day17 extends ZIOAppDefault:
     def cycle: LazyList[A] =
       LazyList.continually(elements).flatten
 
-  extension [S](range: Range)
+  extension [S](num: Long)
     def iterate(initial: S)(step: S => S): S =
-      range.foldLeft(initial)((s, _) => step(s))
+      var i = 0
+      var state = initial
+      while (i < num) do
+        state = step(state)
+        i = i + 1
+      state
 
   enum Move:
     case Left, Right
@@ -125,9 +130,9 @@ object Day17 extends ZIOAppDefault:
       val (newTower, restMoves) = tower.add(rock, moves)
       State(newTower, restMoves, restRocks)
 
-    def run(steps: Int): Tower =
+    def run(steps: Long): Tower =
       val initial = State(Tower.make, moves, rocks)
-      (1 to steps).iterate(initial)(runStep).tower
+      steps.iterate(initial)(runStep).tower
 
   lazy val inputStream =
     ZStream
@@ -141,7 +146,8 @@ object Day17 extends ZIOAppDefault:
     yield Simulate(moveSequence, Rock.sequence).run(2022).height
 
   def part2(is: UStream[Char]): Task[Int] =
-    ZIO.succeed(-1)
+    for moveSequence <- is.map(Move.parse).runCollect.map(_.cycle)
+    yield Simulate(moveSequence, Rock.sequence).run(1000000000000L).height
 
   lazy val run =
     part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")
