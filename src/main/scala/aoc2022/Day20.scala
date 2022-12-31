@@ -12,7 +12,7 @@ object Day20 extends ZIOAppDefault:
 
   extension (n: Long) infix def %%(d: Int) = java.lang.Math.floorMod(n, d).toInt
 
-  extension (indexed: mutable.Buffer[(Long, Int)])
+  extension (indexed: mutable.ArrayBuffer[(Long, Int)])
     def sumNumsAfterZero(deltas: Int*): Long =
       val posOfZero = indexed.indexWhere(_._1 == 0)
       deltas.map { delta =>
@@ -20,7 +20,7 @@ object Day20 extends ZIOAppDefault:
       }.sum
 
   case class Shuffle(numbers: Chunk[Long]):
-    val indexed = numbers.toBuffer.zipWithIndex
+    val indexed = mutable.ArrayBuffer.from(numbers).zipWithIndex
     def mix(times: Int) =
       (1 to times).foreach { _ =>
         (0 until numbers.size).foreach { pos =>
