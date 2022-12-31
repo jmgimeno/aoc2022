@@ -26,18 +26,18 @@ object Day20Suite extends ZIOSpecDefault:
     suite("day20")(
       suite("part1")(
         test("example") {
-          assertZIO(part1(exampleStream))(equalTo(3))
+          assertZIO(part1(exampleStream))(equalTo(3L))
         },
         test("input.txt") {
-          assertZIO(part1(inputStream))(equalTo(2203))
+          assertZIO(part1(inputStream))(equalTo(2203L))
         }
       ),
       suite("part2")(
         test("example") {
-          assertZIO(part2(exampleStream))(equalTo(0))
-        } @@ ignore,
+          assertZIO(part2(exampleStream))(equalTo(1623178306L))
+        },
         test("input.txt") {
-          assertZIO(part2(inputStream))(equalTo(0))
-        } @@ ignore
+          assertZIO(part2(inputStream))(equalTo(6641234038999L))
+        }
       )
     )

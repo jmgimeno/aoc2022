@@ -8,22 +8,28 @@ import scala.util.chaining.scalaUtilChainingOps
 
 object Day20 extends ZIOAppDefault:
 
-  extension (n: Int) infix def %%(d: Int) = java.lang.Math.floorMod(n, d)
+  val decryptionKey = 811589153L
 
-  case class Shuffle(numbers: Chunk[Int]):
+  extension (n: Long) infix def %%(d: Int) = java.lang.Math.floorMod(n, d).toInt
 
-    val indexed = numbers.toBuffer.zipWithIndex
-    (0 until numbers.size).foreach { pos =>
-      val elemPos = indexed.indexWhere(_._2 == pos)
-      val forward = indexed(elemPos)._1
-      indexed.insert((elemPos + forward) %% (numbers.size - 1), indexed.remove(elemPos))
-    }
-
-    def sumNumsAfterZero(deltas: Int*): Int =
+  extension (indexed: mutable.Buffer[(Long, Int)])
+    def sumNumsAfterZero(deltas: Int*): Long =
       val posOfZero = indexed.indexWhere(_._1 == 0)
       deltas.map { delta =>
         indexed((posOfZero + delta) %% indexed.size)._1
       }.sum
+
+  case class Shuffle(numbers: Chunk[Long]):
+    val indexed = numbers.toBuffer.zipWithIndex
+    def mix(times: Int) =
+      (1 to times).foreach { _ =>
+        (0 until numbers.size).foreach { pos =>
+          val elemPos = indexed.indexWhere(_._2 == pos)
+          val forward = indexed(elemPos)._1
+          indexed.insert((elemPos + forward) %% (numbers.size - 1), indexed.remove(elemPos))
+        }
+      }
+      indexed
 
   lazy val inputStream =
     ZStream
@@ -31,12 +37,13 @@ object Day20 extends ZIOAppDefault:
       .via(ZPipeline.utf8Decode >>> ZPipeline.splitLines)
       .orDie
 
-  def part1(is: UStream[String]): Task[Int] =
-    for numbers <- is.map(_.toInt).runCollect
-    yield Shuffle(numbers).sumNumsAfterZero(1000, 2000, 3000)
+  def part1(is: UStream[String]): Task[Long] =
+    for numbers <- is.map(_.toLong).runCollect
+    yield Shuffle(numbers).mix(1).sumNumsAfterZero(1000, 2000, 3000)
 
-  def part2(is: UStream[String]): Task[Int] =
-    ZIO.succeed(-1)
+  def part2(is: UStream[String]): Task[Long] =
+    for numbers <- is.map(_.toLong * decryptionKey).runCollect
+    yield Shuffle(numbers).mix(10).sumNumsAfterZero(1000, 2000, 3000)
 
   lazy val run =
     part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")

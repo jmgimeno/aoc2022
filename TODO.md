@@ -59,14 +59,6 @@
   - <https://coin-or.github.io/pulp/CaseStudies/a_two_stage_production_planning_problem.html>
 - back to the design table
 
-## Day 20
-
-- two indices (one and its inverse) to track the positions of each element
-  - mum:   // immutable
-  - index: position of num(i) in mixed // to know where each number is
-  - inv:   to know the positions in index with a given value
-- permutation group?
-
 ## Day 21
 
 - find another way to define the domain (traits, normal classes & extractors)
