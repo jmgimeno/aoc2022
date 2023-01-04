@@ -16,6 +16,10 @@ object Day19 extends ZIOAppDefault:
 
   case class Blueprint(id: Int, specifications: Map[Resource, Robot]):
     def cost(robotFor: Resource)(r: Resource) = specifications(robotFor).costs.getOrElse(r, 0)
+    def max(resource: Resource) =
+      specifications.values
+        .map(_.costs.getOrElse(resource, 0))
+        .max
 
   object Blueprint:
     import Resource.*
@@ -52,7 +56,8 @@ object Day19 extends ZIOAppDefault:
       resources: Map[Resource, Int]
   ):
     def canCreateRobotFor(resource: Resource) =
-      Resource.values.forall(r => blueprint.cost(resource)(r) <= resources(r))
+      Resource.values.forall(r => blueprint.cost(resource)(r) <= resources(r)) &&
+        (resource == Resource.Geode || robots(resource) < blueprint.max(resource))
 
     def noCreation =
       copy(
@@ -91,16 +96,14 @@ object Day19 extends ZIOAppDefault:
       val initial = State(0, blueprint, robots, resources)
       var best = initial
       val fringe = mutable.PriorityQueue(initial)
+      val visited = mutable.Set.empty[State]
       while !fringe.isEmpty do
         val current = fringe.dequeue()
-        println(s"time      = ${current.time}")
-        println(s"robots    = ${current.robots}")
-        println(s"resources = ${current.resources}")
-        println("_" * 10)
+        visited += current
         if current.time == maxTime
         then
           if current > best then best = current
-        else fringe.enqueue(current.next*)
+        else fringe.enqueue(current.next.filterNot(visited)*)
 
       println(s"best = ${best.resources}")
       best.resources(Resource.Geode)
@@ -112,7 +115,7 @@ object Day19 extends ZIOAppDefault:
       .orDie
 
   def part1(is: UStream[String]): Task[Int] =
-    is.map(Blueprint.parse).map(Simulation(_, 28).qualityLevel).runSum.map(_.toInt)
+    is.map(Blueprint.parse).map(Simulation(_, 24).qualityLevel).runSum.map(_.toInt)
 
   def part2(is: UStream[String]): Task[Int] =
     ZIO.succeed(-1)
