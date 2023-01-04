@@ -102,10 +102,8 @@ object Day19 extends ZIOAppDefault:
         visited += current
         if current.time == maxTime
         then
-          if current > best then best = current
+          if current.resources(Resource.Geode) > best.resources(Resource.Geode) then best = current
         else fringe.enqueue(current.next.filterNot(visited)*)
-
-      println(s"best = ${best.resources}")
       best.resources(Resource.Geode)
 
   lazy val inputStream =
@@ -118,7 +116,7 @@ object Day19 extends ZIOAppDefault:
     is.map(Blueprint.parse).map(Simulation(_, 24).qualityLevel).runSum.map(_.toInt)
 
   def part2(is: UStream[String]): Task[Int] =
-    ZIO.succeed(-1)
+    is.take(3).map(Blueprint.parse).map(Simulation(_, 32).maxGeodes).runFold(1)(_ * _)
 
   lazy val run =
     part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")
