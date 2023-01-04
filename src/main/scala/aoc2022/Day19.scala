@@ -83,12 +83,21 @@ object Day19 extends ZIOAppDefault:
   object State:
     given Ordering[State] =
       Ordering
-        .by[State, Int](s => s.resources(Resource.Geode) + s.robots(Resource.Geode))
-        .orElseBy[Int](s => s.resources(Resource.Obsidian) + s.robots(Resource.Obsidian))
-        .orElseBy[Int](s => s.resources(Resource.Clay) + s.robots(Resource.Clay))
-        .orElseBy[Int](s => s.resources(Resource.Ore) + s.robots(Resource.Ore))
+        .by[State, Int](s => s.robots(Resource.Geode))
+        .orElseBy[Int](s => s.resources(Resource.Geode))
+        .orElseBy[Int](s => s.robots(Resource.Obsidian))
+        .orElseBy[Int](s => s.resources(Resource.Obsidian))
+        .orElseBy[Int](s => s.robots(Resource.Clay))
+        .orElseBy[Int](s => s.resources(Resource.Clay))
+        .orElseBy[Int](s => s.robots(Resource.Ore))
+        .orElseBy[Int](s => s.resources(Resource.Ore))
 
   class Simulation(blueprint: Blueprint, maxTime: Int):
+    def upperBound(state: State) =
+      val restTime = maxTime - state.time
+      state.resources(Resource.Geode) +
+        restTime * state.robots(Resource.Geode) +
+        (restTime * restTime - 2 * restTime + 2) / 2
     def qualityLevel: Int = blueprint.id * maxGeodes
     def maxGeodes: Int =
       val robots = Resource.values.map(r => (r, if r == Resource.Ore then 1 else 0)).toMap
@@ -100,10 +109,12 @@ object Day19 extends ZIOAppDefault:
       while !fringe.isEmpty do
         val current = fringe.dequeue()
         visited += current
-        if current.time == maxTime
-        then
-          if current.resources(Resource.Geode) > best.resources(Resource.Geode) then best = current
-        else fringe.enqueue(current.next.filterNot(visited)*)
+        if upperBound(current) >= best.resources(Resource.Geode) then
+          if current.time == maxTime
+          then
+            if current.resources(Resource.Geode) > best.resources(Resource.Geode) then
+              best = current
+          else fringe.enqueue(current.next.filterNot(visited)*)
       best.resources(Resource.Geode)
 
   lazy val inputStream =

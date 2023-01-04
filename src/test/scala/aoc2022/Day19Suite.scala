@@ -32,7 +32,7 @@ object Day19Suite extends ZIOSpecDefault:
           assertZIO(part2(exampleStream))(equalTo(3472))
         } @@ ignore,
         test("input.txt") {
-          assertZIO(part2(inputStream))(equalTo(0))
+          assertZIO(part2(inputStream))(equalTo(6000))
         } @@ ignore
       )
     )
