@@ -19,7 +19,7 @@ object Day17 extends ZIOAppDefault:
           }
           .reverse).foldLeft("")(_ + _).takeRight(7)
 
-  extension (bytes: Vector[Byte])
+  extension (bytes: List[Byte])
     def debug =
       bytes.map(_.toBinStr)
 
@@ -44,7 +44,7 @@ object Day17 extends ZIOAppDefault:
       case '<' => Left
       case '>' => Right
 
-  case class Rock(bytes: Vector[Byte]):
+  case class Rock(bytes: List[Byte]):
 
     def tryMoveInsideBounds(move: Move): Option[Rock] = move match
       // 0 100 - 0000
@@ -55,23 +55,23 @@ object Day17 extends ZIOAppDefault:
         Some(Rock(bytes.map(b => (b >>> 1).toByte)))
       case _ => None
 
-    def tryMoveHorizontal(background: Vector[Byte], move: Move): Option[Rock] =
-      assert(background.zip(bytes).forall((b, r) => (b & r) == 0), "we shouldn't have interference")
+    def tryMoveHorizontal(background: List[Byte], move: Move): Option[Rock] =
+      // assert(background.zip(bytes).forall((b, r) => (b & r) == 0), "we shouldn't have interference")
       tryMoveInsideBounds(move).filter { newRock =>
         background.zip(newRock.bytes).forall((b, r) => (b & r) == 0)
       }
 
     def moveToStop(
-        lines: Vector[Byte],
+        lines: List[Byte],
         moves: LazyList[Move]
-    ): (Vector[Byte], LazyList[Move], Int) =
+    ): (List[Byte], LazyList[Move], Int) =
       @tailrec def loop(
           rock: Rock,
-          lines: Vector[Byte],
+          lines: List[Byte],
           moves: LazyList[Move],
-          previous: Vector[Byte],
-          background: Vector[Byte]
-      ): (Vector[Byte], LazyList[Move], Int) =
+          previous: List[Byte],
+          background: List[Byte]
+      ): (List[Byte], LazyList[Move], Int) =
         val nextMove #:: restMoves = moves: @unchecked
         val newRock = rock.tryMoveHorizontal(background, nextMove).getOrElse(rock)
         val newBackground = background.drop(1) :+ lines.head
@@ -85,40 +85,40 @@ object Day17 extends ZIOAppDefault:
           then (previous ++ fusedWithBackground, restMoves, lines.size)
           else (previous ++ fusedWithBackground ++ lines, restMoves, 0)
 
-      loop(this, lines, moves, Vector.empty, Vector.fill(bytes.length)(0x00))
+      loop(this, lines, moves, List.empty, List.fill(bytes.length)(0x00))
 
   object Rock:
     // ··####· 0x1E
-    val dash = Rock(Vector(0x1e))
+    val dash = Rock(List(0x1e))
     // ···#··· 0x08
     // ··###·· 0x1C
     // ...#... 0x08
-    val cross = Rock(Vector(0x08, 0x1c, 0x08))
+    val cross = Rock(List(0x08, 0x1c, 0x08))
     // ....#·· 0x04
     // ....#·· 0x04
     // ..###·· 0x1C
-    val angle = Rock(Vector(0x04, 0x04, 0x1c))
+    val angle = Rock(List(0x04, 0x04, 0x1c))
     // ..#.... 0x10
     // ..#.... 0x10
     // ..#.... 0x10
     // ..#.... 0x10
-    val needle = Rock(Vector(0x10, 0x10, 0x10, 0x10))
+    val needle = Rock(List(0x10, 0x10, 0x10, 0x10))
     // ..##... 0x18
     // ..##... 0x18
-    val square = Rock(Vector(0x18, 0x18))
+    val square = Rock(List(0x18, 0x18))
     val sequence = List(dash, cross, angle, needle, square).cycle
 
-  case class Tower(lines: Vector[Byte]):
+  case class Tower(lines: List[Byte]):
 
     def height: Int = lines.dropWhile(_ == 0x00).length - 1
 
     def add(rock: Rock, moves: LazyList[Move]): (Tower, LazyList[Move], Int) =
-      val normalizeLines = Vector.fill[Byte](3)(0x00) ++ lines.dropWhile(_ == 0)
+      val normalizeLines = List.fill[Byte](3)(0x00) ++ lines.dropWhile(_ == 0x00)
       val (newLines, restMoves, deleted) = rock.moveToStop(normalizeLines, moves)
       (Tower(newLines), restMoves, deleted)
 
   object Tower:
-    def make = Tower(Vector(0x7f))
+    def make = Tower(List(0x7f))
 
   case class State(tower: Tower, moves: LazyList[Move], rocks: LazyList[Rock], deleted: Int):
     def height = tower.height + deleted
