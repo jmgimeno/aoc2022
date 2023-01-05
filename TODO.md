@@ -41,10 +41,7 @@
 
 ## Day 17
 
-- Possible design:
-  - use bytes for the lines of each piece
-  - and a ListBuffer[Byte] for the screen
-  - and you'll have one byte free maybe to use in part2
+- Analyze why it fails with all the prefix in the history instead of the shape
 
 ## Day 18
 

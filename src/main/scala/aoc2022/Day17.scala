@@ -59,13 +59,13 @@ object Day17 extends ZIOAppDefault:
     def moveToStop(
         lines: List[Byte],
         moves: Cycle[Move]
-    ): (List[Byte], Int) =
+    ): List[Byte] =
       @tailrec def loop(
           rock: Rock,
           lines: List[Byte],
           previous: List[Byte],
           background: List[Byte]
-      ): (List[Byte], Int) =
+      ): List[Byte] =
         val nextMove = moves.next
         val newRock = rock.tryMoveHorizontal(background, nextMove).getOrElse(rock)
         val newBackground = background.drop(1) :+ lines.head
@@ -75,9 +75,7 @@ object Day17 extends ZIOAppDefault:
           loop(newRock, lines.tail, newPrevious, newBackground)
         else
           val fusedWithBackground = background.zip(newRock.bytes).map(_ | _).map(_.toByte)
-          if fusedWithBackground.contains(0x7f)
-          then (previous ++ fusedWithBackground, lines.size)
-          else (previous ++ fusedWithBackground ++ lines, 0)
+          previous ++ fusedWithBackground ++ lines
 
       loop(this, lines, List.empty, List.fill(bytes.length)(0x00))
 
@@ -114,48 +112,43 @@ object Day17 extends ZIOAppDefault:
         }
       }
 
-    def add(rock: Rock, moves: Cycle[Move]): (Tower, Int) =
+    def add(rock: Rock, moves: Cycle[Move]): Tower =
       val normalizeLines = List.fill[Byte](3)(0x00) ++ lines.dropWhile(_ == 0x00)
-      val (newLines, deleted) = rock.moveToStop(normalizeLines, moves)
-      (Tower(newLines), deleted)
+      val newLines = rock.moveToStop(normalizeLines, moves)
+      Tower(newLines)
 
   object Tower:
     def make = Tower(List(0x7f))
-
-  case class State(tower: Tower, deleted: Long):
-    def height = tower.height + deleted
 
   case class Simulate(moves: Cycle[Move], rocks: Cycle[Rock]):
 
     case class History(idRock: Int, idMove: Int, shape: List[Int])
     case class Effect(time: Long, height: Long)
 
-    def run(steps: Long): State =
+    def run(steps: Long): Long =
       val cache = mutable.Map[History, Effect]()
-      @tailrec def loop(t: Long, state: State): State =
-        if t > steps then state
+      @tailrec def loop(t: Long, tower: Tower, accum: Long): Long =
+        if t == steps then tower.height + accum
         else
-          val State(tower, deleted) = state
           val rock = rocks.next
-          val (newTower, newDeleted) = tower.add(rock, moves)
-          val newState = State(newTower, deleted + newDeleted)
-          val shape = newTower.shape
-          val history = History(rocks.index, moves.index, shape)
+          val newTower = tower.add(rock, moves)
+          val history = History(rocks.index, moves.index, newTower.shape)
           if !cache.contains(history) then
-            cache += history -> Effect(t, newState.height)
-            loop(t + 1, newState)
+            cache += history -> Effect(t, newTower.height)
+            loop(t + 1, newTower, accum)
           else
             val Effect(tPrevious, hPrevious) = cache(history)
             val remaining = steps - t
             val period = t - tPrevious
-            val increment = newState.height - hPrevious
+            val increment = newTower.height - hPrevious
             val cycles = remaining / period
             cache.clear()
             loop(
               t + cycles * period,
-              newState.copy(deleted = newState.deleted + increment * cycles)
+              newTower,
+              accum + increment * cycles
             )
-      loop(1, State(Tower.make, 0)).tap(println)
+      loop(1, Tower.make, 0)
 
   lazy val inputStream =
     ZStream
@@ -166,11 +159,11 @@ object Day17 extends ZIOAppDefault:
 
   def part1(is: UStream[Char]): Task[Long] =
     for moveSequence <- is.map(Move.parse).runCollect.map(cm => Cycle(cm.toList))
-    yield Simulate(moveSequence, Rock.sequence).run(2022).height
+    yield Simulate(moveSequence, Rock.sequence).run(2022)
 
   def part2(is: UStream[Char]): Task[Long] =
     for moveSequence <- is.map(Move.parse).runCollect.map(cm => Cycle(cm.toList))
-    yield Simulate(moveSequence, Rock.sequence).run(1000000000000L).height
+    yield Simulate(moveSequence, Rock.sequence).run(1000000000000L)
 
   lazy val run =
     part1(inputStream).debug("PART1") *> part2(inputStream).debug("PART2")
