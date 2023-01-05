@@ -3,6 +3,7 @@ package aoc2022
 import zio.*
 import zio.stream.*
 
+import scala.collection.mutable
 import scala.util.chaining.scalaUtilChainingOps
 import scala.annotation.tailrec
 
@@ -105,6 +106,14 @@ object Day17 extends ZIOAppDefault:
 
     def height: Int = lines.dropWhile(_ == 0x00).length - 1
 
+    def shape: List[Int] =
+      val normalizeLines = lines.dropWhile(_ == 0x00)
+      List.tabulate(7) { pos =>
+        normalizeLines.indexWhere { b =>
+          (b >> pos) % 2 == 1
+        }
+      }
+
     def add(rock: Rock, moves: Cycle[Move]): (Tower, Int) =
       val normalizeLines = List.fill[Byte](3)(0x00) ++ lines.dropWhile(_ == 0x00)
       val (newLines, deleted) = rock.moveToStop(normalizeLines, moves)
@@ -113,20 +122,40 @@ object Day17 extends ZIOAppDefault:
   object Tower:
     def make = Tower(List(0x7f))
 
-  case class State(tower: Tower, deleted: Int):
+  case class State(tower: Tower, deleted: Long):
     def height = tower.height + deleted
 
   case class Simulate(moves: Cycle[Move], rocks: Cycle[Rock]):
 
+    case class History(idRock: Int, idMove: Int, shape: List[Int])
+    case class Effect(time: Long, height: Long)
+
     def run(steps: Long): State =
+      val cache = mutable.Map[History, Effect]()
       @tailrec def loop(t: Long, state: State): State =
-        if t == steps then state
+        if t > steps then state
         else
           val State(tower, deleted) = state
           val rock = rocks.next
           val (newTower, newDeleted) = tower.add(rock, moves)
-          loop(t + 1, State(newTower, deleted + newDeleted))
-      loop(0, State(Tower.make, 0))
+          val newState = State(newTower, deleted + newDeleted)
+          val shape = newTower.shape
+          val history = History(rocks.index, moves.index, shape)
+          if !cache.contains(history) then
+            cache += history -> Effect(t, newState.height)
+            loop(t + 1, newState)
+          else
+            val Effect(tPrevious, hPrevious) = cache(history)
+            val remaining = steps - t
+            val period = t - tPrevious
+            val increment = newState.height - hPrevious
+            val cycles = remaining / period
+            cache.clear()
+            loop(
+              t + cycles * period,
+              newState.copy(deleted = newState.deleted + increment * cycles)
+            )
+      loop(1, State(Tower.make, 0)).tap(println)
 
   lazy val inputStream =
     ZStream
@@ -135,11 +164,11 @@ object Day17 extends ZIOAppDefault:
       .flatMap(ZStream.fromIterable)
       .orDie
 
-  def part1(is: UStream[Char]): Task[Int] =
+  def part1(is: UStream[Char]): Task[Long] =
     for moveSequence <- is.map(Move.parse).runCollect.map(cm => Cycle(cm.toList))
     yield Simulate(moveSequence, Rock.sequence).run(2022).height
 
-  def part2(is: UStream[Char]): Task[Int] =
+  def part2(is: UStream[Char]): Task[Long] =
     for moveSequence <- is.map(Move.parse).runCollect.map(cm => Cycle(cm.toList))
     yield Simulate(moveSequence, Rock.sequence).run(1000000000000L).height
 
