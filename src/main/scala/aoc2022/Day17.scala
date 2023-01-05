@@ -23,9 +23,12 @@ object Day17 extends ZIOAppDefault:
     def debug =
       bytes.map(_.toBinStr)
 
-  extension [A](elements: IterableOnce[A])
-    def cycle: LazyList[A] =
-      LazyList.continually(elements).flatten
+  class Cycle[A](elements: List[A]):
+    var index = 0
+    def next: A =
+      val result = elements(index)
+      index = (index + 1) % elements.size
+      result
 
   extension [S](num: Long)
     def iterate(initial: S)(step: S => S): S =
@@ -63,29 +66,28 @@ object Day17 extends ZIOAppDefault:
 
     def moveToStop(
         lines: List[Byte],
-        moves: LazyList[Move]
-    ): (List[Byte], LazyList[Move], Int) =
+        moves: Cycle[Move]
+    ): (List[Byte], Int) =
       @tailrec def loop(
           rock: Rock,
           lines: List[Byte],
-          moves: LazyList[Move],
           previous: List[Byte],
           background: List[Byte]
-      ): (List[Byte], LazyList[Move], Int) =
-        val nextMove #:: restMoves = moves: @unchecked
+      ): (List[Byte], Int) =
+        val nextMove = moves.next
         val newRock = rock.tryMoveHorizontal(background, nextMove).getOrElse(rock)
         val newBackground = background.drop(1) :+ lines.head
         val canMoveDown = newBackground.zip(newRock.bytes).forall((b, r) => (b & r) == 0)
         if canMoveDown then
           val newPrevious = previous :+ background.head
-          loop(newRock, lines.tail, restMoves, newPrevious, newBackground)
+          loop(newRock, lines.tail, newPrevious, newBackground)
         else
           val fusedWithBackground = background.zip(newRock.bytes).map(_ | _).map(_.toByte)
           if fusedWithBackground.contains(0x7f)
-          then (previous ++ fusedWithBackground, restMoves, lines.size)
-          else (previous ++ fusedWithBackground ++ lines, restMoves, 0)
+          then (previous ++ fusedWithBackground, lines.size)
+          else (previous ++ fusedWithBackground ++ lines, 0)
 
-      loop(this, lines, moves, List.empty, List.fill(bytes.length)(0x00))
+      loop(this, lines, List.empty, List.fill(bytes.length)(0x00))
 
   object Rock:
     // ··####· 0x1E
@@ -106,32 +108,33 @@ object Day17 extends ZIOAppDefault:
     // ..##... 0x18
     // ..##... 0x18
     val square = Rock(List(0x18, 0x18))
-    val sequence = List(dash, cross, angle, needle, square).cycle
+    def sequence = Cycle(List(dash, cross, angle, needle, square))
 
   case class Tower(lines: List[Byte]):
 
     def height: Int = lines.dropWhile(_ == 0x00).length - 1
 
-    def add(rock: Rock, moves: LazyList[Move]): (Tower, LazyList[Move], Int) =
+    def add(rock: Rock, moves: Cycle[Move]): (Tower, Int) =
       val normalizeLines = List.fill[Byte](3)(0x00) ++ lines.dropWhile(_ == 0x00)
-      val (newLines, restMoves, deleted) = rock.moveToStop(normalizeLines, moves)
-      (Tower(newLines), restMoves, deleted)
+      val (newLines, deleted) = rock.moveToStop(normalizeLines, moves)
+      (Tower(newLines), deleted)
 
   object Tower:
     def make = Tower(List(0x7f))
 
-  case class State(tower: Tower, moves: LazyList[Move], rocks: LazyList[Rock], deleted: Int):
+  case class State(tower: Tower, deleted: Int):
     def height = tower.height + deleted
 
-  case class Simulate(moves: LazyList[Move], rocks: LazyList[Rock]):
+  case class Simulate(moves: Cycle[Move], rocks: Cycle[Rock]):
 
     def runStep(state: State): State =
-      val State(tower, moves, rock #:: restRocks, deleted) = state: @unchecked
-      val (newTower, restMoves, newDeleted) = tower.add(rock, moves)
-      State(newTower, restMoves, restRocks, deleted + newDeleted)
+      val State(tower, deleted) = state: @unchecked
+      val rock = rocks.next
+      val (newTower, newDeleted) = tower.add(rock, moves)
+      State(newTower, deleted + newDeleted)
 
     def run(steps: Long): State =
-      val initial = State(Tower.make, moves, rocks, 0)
+      val initial = State(Tower.make, 0)
       steps.iterate(initial)(runStep)
 
   lazy val inputStream =
@@ -142,11 +145,11 @@ object Day17 extends ZIOAppDefault:
       .orDie
 
   def part1(is: UStream[Char]): Task[Int] =
-    for moveSequence <- is.map(Move.parse).runCollect.map(_.cycle)
+    for moveSequence <- is.map(Move.parse).runCollect.map(cm => Cycle(cm.toList))
     yield Simulate(moveSequence, Rock.sequence).run(2022).height
 
   def part2(is: UStream[Char]): Task[Int] =
-    for moveSequence <- is.map(Move.parse).runCollect.map(_.cycle)
+    for moveSequence <- is.map(Move.parse).runCollect.map(cm => Cycle(cm.toList))
     yield Simulate(moveSequence, Rock.sequence).run(1000000000000L).height
 
   lazy val run =
