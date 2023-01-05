@@ -30,15 +30,6 @@ object Day17 extends ZIOAppDefault:
       index = (index + 1) % elements.size
       result
 
-  extension [S](num: Long)
-    def iterate(initial: S)(step: S => S): S =
-      var i = 0
-      var state = initial
-      while (i < num) do
-        state = step(state)
-        i = i + 1
-      state
-
   enum Move:
     case Left, Right
 
@@ -127,15 +118,15 @@ object Day17 extends ZIOAppDefault:
 
   case class Simulate(moves: Cycle[Move], rocks: Cycle[Rock]):
 
-    def runStep(state: State): State =
-      val State(tower, deleted) = state: @unchecked
-      val rock = rocks.next
-      val (newTower, newDeleted) = tower.add(rock, moves)
-      State(newTower, deleted + newDeleted)
-
     def run(steps: Long): State =
-      val initial = State(Tower.make, 0)
-      steps.iterate(initial)(runStep)
+      @tailrec def loop(t: Long, state: State): State =
+        if t == steps then state
+        else
+          val State(tower, deleted) = state
+          val rock = rocks.next
+          val (newTower, newDeleted) = tower.add(rock, moves)
+          loop(t + 1, State(newTower, deleted + newDeleted))
+      loop(0, State(Tower.make, 0))
 
   lazy val inputStream =
     ZStream
