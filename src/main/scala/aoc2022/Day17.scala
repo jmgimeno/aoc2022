@@ -61,14 +61,17 @@ object Day17 extends ZIOAppDefault:
         background.zip(newRock.bytes).forall((b, r) => (b & r) == 0)
       }
 
-    def moveToStop(lines: Vector[Byte], moves: LazyList[Move]): (Vector[Byte], LazyList[Move]) =
+    def moveToStop(
+        lines: Vector[Byte],
+        moves: LazyList[Move]
+    ): (Vector[Byte], LazyList[Move], Int) =
       @tailrec def loop(
           rock: Rock,
           lines: Vector[Byte],
           moves: LazyList[Move],
           previous: Vector[Byte],
           background: Vector[Byte]
-      ): (Vector[Byte], LazyList[Move]) =
+      ): (Vector[Byte], LazyList[Move], Int) =
         val nextMove #:: restMoves = moves: @unchecked
         val newRock = rock.tryMoveHorizontal(background, nextMove).getOrElse(rock)
         val newBackground = background.drop(1) :+ lines.head
@@ -78,7 +81,9 @@ object Day17 extends ZIOAppDefault:
           loop(newRock, lines.tail, restMoves, newPrevious, newBackground)
         else
           val fusedWithBackground = background.zip(newRock.bytes).map(_ | _).map(_.toByte)
-          (previous ++ fusedWithBackground ++ lines, restMoves)
+          if fusedWithBackground.contains(0x7f)
+          then (previous ++ fusedWithBackground, restMoves, lines.size)
+          else (previous ++ fusedWithBackground ++ lines, restMoves, 0)
 
       loop(this, lines, moves, Vector.empty, Vector.fill(bytes.length)(0x00))
 
@@ -107,26 +112,27 @@ object Day17 extends ZIOAppDefault:
 
     def height: Int = lines.dropWhile(_ == 0x00).length - 1
 
-    def add(rock: Rock, moves: LazyList[Move]): (Tower, LazyList[Move]) =
+    def add(rock: Rock, moves: LazyList[Move]): (Tower, LazyList[Move], Int) =
       val normalizeLines = Vector.fill[Byte](3)(0x00) ++ lines.dropWhile(_ == 0)
-      val (newLines, restMoves) = rock.moveToStop(normalizeLines, moves)
-      (Tower(newLines), restMoves)
+      val (newLines, restMoves, deleted) = rock.moveToStop(normalizeLines, moves)
+      (Tower(newLines), restMoves, deleted)
 
   object Tower:
     def make = Tower(Vector(0x7f))
 
-  case class State(tower: Tower, moves: LazyList[Move], rocks: LazyList[Rock])
+  case class State(tower: Tower, moves: LazyList[Move], rocks: LazyList[Rock], deleted: Int):
+    def height = tower.height + deleted
 
   case class Simulate(moves: LazyList[Move], rocks: LazyList[Rock]):
 
     def runStep(state: State): State =
-      val State(tower, moves, rock #:: restRocks) = state: @unchecked
-      val (newTower, restMoves) = tower.add(rock, moves)
-      State(newTower, restMoves, restRocks)
+      val State(tower, moves, rock #:: restRocks, deleted) = state: @unchecked
+      val (newTower, restMoves, newDeleted) = tower.add(rock, moves)
+      State(newTower, restMoves, restRocks, deleted + newDeleted)
 
-    def run(steps: Long): Tower =
-      val initial = State(Tower.make, moves, rocks)
-      steps.iterate(initial)(runStep).tower
+    def run(steps: Long): State =
+      val initial = State(Tower.make, moves, rocks, 0)
+      steps.iterate(initial)(runStep)
 
   lazy val inputStream =
     ZStream
