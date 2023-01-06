@@ -122,33 +122,32 @@ object Day17 extends ZIOAppDefault:
 
   case class Simulate(moves: Cycle[Move], rocks: Cycle[Rock]):
 
-    case class History(idRock: Int, idMove: Int, shape: List[Int])
-    case class Effect(time: Long, height: Long)
+    case class Memento(idRock: Int, idMove: Int, shape: List[Int])
 
     def run(steps: Long): Long =
-      val cache = mutable.Map[History, Effect]()
-      @tailrec def loop(t: Long, tower: Tower, accum: Long): Long =
-        if t == steps then tower.height + accum
+      val cache = mutable.Map[Memento, Long]()
+      val heights = mutable.Map[Long, Long]()
+      @tailrec def loop(t: Long, tower: Tower): Long =
+        if t == steps then tower.height
         else
           val rock = rocks.next
           val newTower = tower.add(rock, moves)
-          val history = History(rocks.index, moves.index, newTower.shape)
-          if !cache.contains(history) then
-            cache += history -> Effect(t, newTower.height)
-            loop(t + 1, newTower, accum)
+          val memento = Memento(rocks.index, moves.index, newTower.shape)
+          if !cache.contains(memento) then
+            cache += memento -> t
+            heights += t -> newTower.height
+            loop(t + 1, newTower)
           else
-            val Effect(tPrevious, hPrevious) = cache(history)
+            val tPrevious = cache(memento)
+            val hPrevious = heights(tPrevious)
             val remaining = steps - t
             val period = t - tPrevious
             val increment = newTower.height - hPrevious
             val cycles = remaining / period
-            cache.clear()
-            loop(
-              t + cycles * period,
-              newTower,
-              accum + increment * cycles
-            )
-      loop(1, Tower.make, 0)
+            val diff = remaining % period
+            val hDiff = heights(tPrevious + diff) - hPrevious
+            newTower.height + increment * cycles + hDiff
+      loop(1, Tower.make)
 
   lazy val inputStream =
     ZStream
