@@ -279,8 +279,18 @@ object Day22 extends ZIOAppDefault {
       5 -> Map(Right -> (5, Rot0), Down -> (3, Rot0), Left -> (5, Rot0), Up -> (3, Rot0))
     )
 
+  val inputFaceMapPart2: FaceMap =
+    Map(
+      0 -> Map(Right -> (1, Rot0), Down -> (2, Rot0), Left -> (3, Rot180), Up -> (5, Rot90)),
+      1 -> Map(Right -> (4, Rot180), Down -> (2, Rot90), Left -> (0, Rot0), Up -> (5, Rot0)),
+      2 -> Map(Right -> (1, Rot270), Down -> (4, Rot0), Left -> (3, Rot270), Up -> (0, Rot0)),
+      3 -> Map(Right -> (4, Rot0), Down -> (5, Rot0), Left -> (0, Rot180), Up -> (2, Rot90)),
+      4 -> Map(Right -> (1, Rot180), Down -> (5, Rot90), Left -> (3, Rot0), Up -> (2, Rot0)),
+      5 -> Map(Right -> (4, Rot270), Down -> (1, Rot0), Left -> (0, Rot270), Up -> (3, Rot0))
+    )
+
   lazy val run = {
     part(inputStream, inputShape, inputSize, inputFaceMapPart1).debug("PART1")
-      *> part(inputStream, inputShape, inputSize, inputFaceMapPart1).debug("PART2")
+      *> part(inputStream, inputShape, inputSize, inputFaceMapPart2).debug("PART2")
   }
 }

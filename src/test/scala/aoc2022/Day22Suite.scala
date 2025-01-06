@@ -79,9 +79,9 @@ object Day22Suite extends ZIOSpecDefault:
           )
         },
         test("input.txt") {
-          assertZIO(part(inputStream, Day22.inputShape, Day22.inputSize, Day22.inputFaceMapPart1))(
-            equalTo(0)
+          assertZIO(part(inputStream, Day22.inputShape, Day22.inputSize, Day22.inputFaceMapPart2))(
+            equalTo(12462)
           )
-        } @@ ignore
+        }
       )
     )
