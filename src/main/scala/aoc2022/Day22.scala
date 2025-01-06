@@ -25,6 +25,8 @@ object Day22 extends ZIOAppDefault {
     case CounterClockwise
   }
 
+  import Step.*
+
   case class Path(steps: List[Step])
 
   case class Position(x: Int, y: Int) {
@@ -39,23 +41,99 @@ object Day22 extends ZIOAppDefault {
     case Down extends Orientation(0, 1)
     case Left extends Orientation(-1, 0)
     case Up extends Orientation(0, -1)
+
+    def clockwise: Orientation = this match {
+      case Right => Down
+      case Down  => Left
+      case Left  => Up
+      case Up    => Right
+    }
+
+    def counterClockwise: Orientation = this match {
+      case Right => Up
+      case Down  => Right
+      case Left  => Down
+      case Up    => Left
+    }
   }
 
   import Orientation.*
 
-  class Face(id: Int, bigX: Int, bigY: Int, tiles: Array[Array[Tile]]) {
+  class Face(val id: Int, val bigX: Int, val bigY: Int, tiles: Array[Array[Tile]]) {
 
     val size = tiles.length
 
     def apply(y: Int)(x: Int): Tile = tiles(y)(x)
+
+    def bigPosition(position: Position): Position = {
+      Position(bigX * size + position.x + 1, bigY * size + position.y + 1)
+    }
+
+    def isInside(position: Position): Boolean = {
+      position.x >= 0 && position.x < size && position.y >= 0 && position.y < size
+    }
+
+    def password(position: Position): Int = {
+      val totalPosition = bigPosition(position)
+      1000 * totalPosition.y + 4 * totalPosition.x
+    }
 
     override def toString: String =
       s"id: $id, bigX: $bigX, bigY: $bigY, size: $size\n" +
         tiles.map(_.mkString).mkString("\n")
   }
 
+  case class Walker(val face: Face, val position: Position, val orientation: Orientation) {
+    def password: Int = face.password(position) + orientation.ordinal
+    override def toString: String = s"face: ${face.id}, position: $position, orientation: $orientation"
+  }
+
   class Board(val faces: Array[Face], faceMap: Map[Int, Map[Orientation, Int]]) {
     def apply(f: Int)(y: Int)(x: Int): Tile = faces(f)(y)(x)
+
+    def step(walker: Walker): Option[(Face, Position)] = {
+      val nextPosition = walker.position + walker.orientation
+      if walker.face.isInside(nextPosition) then 
+        if walker.face(nextPosition.y)(nextPosition.x) == Tile.Wall then None
+        else Some((walker.face, nextPosition))
+      else 
+        val newFace = faces(faceMap(walker.face.id)(walker.orientation))
+        val newPosition = Position(
+          if nextPosition.x < 0 then newFace.size - 1 else if nextPosition.x >= newFace.size then 0 else nextPosition.x,
+          if nextPosition.y < 0 then newFace.size - 1 else if nextPosition.y >= newFace.size then 0 else nextPosition.y
+        )
+        if newFace(newPosition.y)(newPosition.x) == Tile.Wall then None
+        else Some((newFace, newPosition))
+    }
+
+    def run(path: Path): Int = {
+
+      @tailrec
+      def go(walker: Walker, path: List[Step]): Walker = {
+        path match
+          case Nil => walker
+          case Ahead(0) :: next =>
+            go(walker, next)
+          case Ahead(n) :: next => 
+            step(walker) match
+              case None => 
+                go(walker, next)
+              case Some((face, position)) => 
+                go(Walker(face, position, walker.orientation), Ahead(n - 1) :: next)
+          case Clockwise :: next => 
+            go(walker.copy(orientation = walker.orientation.clockwise), next)
+          case CounterClockwise :: next => 
+            go(walker.copy(orientation = walker.orientation.counterClockwise), next)
+      }
+
+      val start = Walker(findStart(faces), Position(0, 0), Right)
+      val end = go(start, path.steps)
+      end.password
+    }
+
+    def findStart(faces: Array[Face]): Face = {
+      faces.filter(_.bigY == 0).minBy(_.bigX)
+    }
 
     override def toString: String =
       faces.map(_.toString).mkString("\n")
@@ -142,7 +220,7 @@ object Day22 extends ZIOAppDefault {
       blocks <- is.split(_.isEmpty).runCollect
       board = Parser.parseBoard(blocks(0), shape, size, faceMap)
       path = Parser.parsePath(blocks(1))
-    } yield 0
+    } yield board.run(path)
   }
 
   def part2(is: UStream[String]): Task[Int] = {

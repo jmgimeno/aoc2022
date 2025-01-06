@@ -56,8 +56,8 @@ object Day22Suite extends ZIOSpecDefault:
         test("input.txt") {
           assertZIO(part1(inputStream, Day22.inputShape, Day22.inputSize, Day22.inputFaceMap))(
             equalTo(149250)
-          )
-        } @@ ignore
+          ) 
+        }
       ),
       suite("part2")(
         test("example") {
