@@ -9,6 +9,7 @@ import scala.util.Try
 import scala.util.Failure
 import scala.util.Success
 import scala.annotation.tailrec
+import aoc2022.Day10.CPU.make
 
 object Day22 extends ZIOAppDefault {
 
@@ -59,7 +60,21 @@ object Day22 extends ZIOAppDefault {
 
   import Orientation.*
 
-  class Face(val id: Int, val bigX: Int, val bigY: Int, tiles: Array[Array[Tile]]) {
+  enum Rotation {
+    // Rotations are always considered clockwise
+    case Rot0, Rot90, Rot180, Rot270
+
+    def rotate(orientation: Orientation): Orientation = this match {
+      case Rot0   => orientation
+      case Rot90  => orientation.clockwise
+      case Rot180 => orientation.clockwise.clockwise
+      case Rot270 => orientation.counterClockwise
+    }
+  }
+
+  import Rotation.*
+
+  class Face(val id: Int, val bigX: Int, val bigY: Int, val tiles: Array[Array[Tile]]) {
 
     val size = tiles.length
 
@@ -78,32 +93,52 @@ object Day22 extends ZIOAppDefault {
       1000 * totalPosition.y + 4 * totalPosition.x
     }
 
+    def rotate(position: Position, rotation: Rotation, orientation: Orientation): Position = {
+      val initial = orientation match
+        case Right => position.copy(x = 0)
+        case Down  => position.copy(y = 0)
+        case Left  => position.copy(x = size - 1)
+        case Up    => position.copy(y = size - 1)
+      rotation match {
+        case Rot0   => initial
+        case Rot90  => Position(size - 1 - initial.y, initial.x)
+        case Rot180 => Position(size - 1 - initial.x, size - 1 - initial.y)
+        case Rot270 => Position(initial.y, size - 1 - initial.x)
+      }
+    }
+
     override def toString: String =
       s"id: $id, bigX: $bigX, bigY: $bigY, size: $size\n" +
         tiles.map(_.mkString).mkString("\n")
   }
 
-  case class Walker(val face: Face, val position: Position, val orientation: Orientation) {
+  case class Walker(
+      val face: Face,
+      val position: Position,
+      val orientation: Orientation
+  ) {
     def password: Int = face.password(position) + orientation.ordinal
-    override def toString: String = s"face: ${face.id}, position: $position, orientation: $orientation"
+    override def toString: String =
+      s"face: ${face.id}, position: $position, bigPosition: ${face.bigPosition(position)}, orientation: $orientation"
   }
 
-  class Board(val faces: Array[Face], faceMap: Map[Int, Map[Orientation, Int]]) {
+  type FaceMap = Map[Int, Map[Orientation, (Int, Rotation)]]
+
+  class Board(val faces: Array[Face], faceMap: FaceMap) {
     def apply(f: Int)(y: Int)(x: Int): Tile = faces(f)(y)(x)
 
-    def step(walker: Walker): Option[(Face, Position)] = {
+    def step(walker: Walker): Option[(Face, Orientation, Position)] = {
       val nextPosition = walker.position + walker.orientation
-      if walker.face.isInside(nextPosition) then 
+      if walker.face.isInside(nextPosition) then
         if walker.face(nextPosition.y)(nextPosition.x) == Tile.Wall then None
-        else Some((walker.face, nextPosition))
-      else 
-        val newFace = faces(faceMap(walker.face.id)(walker.orientation))
-        val newPosition = Position(
-          if nextPosition.x < 0 then newFace.size - 1 else if nextPosition.x >= newFace.size then 0 else nextPosition.x,
-          if nextPosition.y < 0 then newFace.size - 1 else if nextPosition.y >= newFace.size then 0 else nextPosition.y
-        )
-        if newFace(newPosition.y)(newPosition.x) == Tile.Wall then None
-        else Some((newFace, newPosition))
+        else Some((walker.face, walker.orientation, nextPosition))
+      else
+        val (newFaceId, rotation) = faceMap(walker.face.id)(walker.orientation)
+        val rotatedOrientation = rotation.rotate(walker.orientation)
+        val newFace = faces(newFaceId)
+        val rotatedNewPosition = walker.face.rotate(nextPosition, rotation, walker.orientation)
+        if newFace(rotatedNewPosition.y)(rotatedNewPosition.x) == Tile.Wall then None
+        else Some((newFace, rotatedOrientation, rotatedNewPosition))
     }
 
     def run(path: Path): Int = {
@@ -114,15 +149,18 @@ object Day22 extends ZIOAppDefault {
           case Nil => walker
           case Ahead(0) :: next =>
             go(walker, next)
-          case Ahead(n) :: next => 
+          case Ahead(n) :: next =>
             step(walker) match
-              case None => 
+              case None =>
                 go(walker, next)
-              case Some((face, position)) => 
-                go(Walker(face, position, walker.orientation), Ahead(n - 1) :: next)
-          case Clockwise :: next => 
+              case Some((face, orientation, position)) =>
+                go(
+                  walker.copy(face = face, position = position, orientation = orientation),
+                  Ahead(n - 1) :: next
+                )
+          case Clockwise :: next =>
             go(walker.copy(orientation = walker.orientation.clockwise), next)
-          case CounterClockwise :: next => 
+          case CounterClockwise :: next =>
             go(walker.copy(orientation = walker.orientation.counterClockwise), next)
       }
 
@@ -158,7 +196,7 @@ object Day22 extends ZIOAppDefault {
         block: Chunk[String],
         shape: String,
         size: Int,
-        faceMap: Map[Int, Map[Orientation, Int]]
+        faceMap: FaceMap
     ): Board = {
       val tiles = Array.ofDim[Tile](6, size, size)
 
@@ -210,21 +248,17 @@ object Day22 extends ZIOAppDefault {
       .orDie
   }
 
-  def part1(
+  def part(
       is: UStream[String],
       shape: String,
       size: Int,
-      faceMap: Map[Int, Map[Orientation, Int]]
+      faceMap: FaceMap
   ): Task[Int] = {
     for {
       blocks <- is.split(_.isEmpty).runCollect
       board = Parser.parseBoard(blocks(0), shape, size, faceMap)
       path = Parser.parsePath(blocks(1))
     } yield board.run(path)
-  }
-
-  def part2(is: UStream[String]): Task[Int] = {
-    ZIO.succeed(-1)
   }
 
   val inputShape =
@@ -235,18 +269,18 @@ object Day22 extends ZIOAppDefault {
 
   val inputSize = 50
 
-  val inputFaceMap: Map[Int, Map[Orientation, Int]] =
+  val inputFaceMapPart1: FaceMap =
     Map(
-      0 -> Map(Right -> 1, Down -> 2, Left -> 1, Up -> 4),
-      1 -> Map(Right -> 0, Down -> 1, Left -> 0, Up -> 1),
-      2 -> Map(Right -> 2, Down -> 4, Left -> 2, Up -> 0),
-      3 -> Map(Right -> 4, Down -> 5, Left -> 4, Up -> 5),
-      4 -> Map(Right -> 3, Down -> 0, Left -> 3, Up -> 2),
-      5 -> Map(Right -> 5, Down -> 3, Left -> 5, Up -> 3)
+      0 -> Map(Right -> (1, Rot0), Down -> (2, Rot0), Left -> (1, Rot0), Up -> (4, Rot0)),
+      1 -> Map(Right -> (0, Rot0), Down -> (1, Rot0), Left -> (0, Rot0), Up -> (1, Rot0)),
+      2 -> Map(Right -> (2, Rot0), Down -> (4, Rot0), Left -> (2, Rot0), Up -> (0, Rot0)),
+      3 -> Map(Right -> (4, Rot0), Down -> (5, Rot0), Left -> (4, Rot0), Up -> (5, Rot0)),
+      4 -> Map(Right -> (3, Rot0), Down -> (0, Rot0), Left -> (3, Rot0), Up -> (2, Rot0)),
+      5 -> Map(Right -> (5, Rot0), Down -> (3, Rot0), Left -> (5, Rot0), Up -> (3, Rot0))
     )
 
   lazy val run = {
-    part1(inputStream, inputShape, inputSize, inputFaceMap).debug("PART1") *> part2(inputStream)
-      .debug("PART2")
+    part(inputStream, inputShape, inputSize, inputFaceMapPart1).debug("PART1")
+      *> part(inputStream, inputShape, inputSize, inputFaceMapPart1).debug("PART2")
   }
 }
